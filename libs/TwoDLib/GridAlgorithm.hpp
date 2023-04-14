@@ -16,17 +16,17 @@
 
 namespace TwoDLib {
 
-/**
- * \brief Mesh or 2D algorithm class.
- *
- * This class simulates the evolution of a neural population density function on a 2D grid.
- */
+	/**
+	 * \brief Mesh or 2D algorithm class.
+	 *
+	 * This class simulates the evolution of a neural population density function on a 2D grid.
+	 */
 
-	class GridAlgorithm : public DensityAlgorithmInterface<MPILib::CustomConnectionParameters>{
+	class GridAlgorithm : public DensityAlgorithmInterface<MPILib::CustomConnectionParameters> {
 		friend DensityAlgorithmInterface<MPILib::CustomConnectionParameters>;
 
 	public:
-    GridAlgorithm
+		GridAlgorithm
 		(
 			const std::string&, 		    	 //!< model file name
 			const std::string&,     //!< Transform matrix
@@ -35,7 +35,8 @@ namespace TwoDLib {
 			double,
 			MPILib::Time tau_refractive = 0,     //!< absolute refractive period
 			const string& ratemethod = "",       //!< firing rate computation; by default the mass flux across threshold
-			const unsigned int num_objects = 0	 //!< number of finite objects 
+			const unsigned int num_objects = 0,	 //!< number of finite objects
+			const std::vector<double> kernel = { 1.0 }//!< kernel to use when averaging densities
 		);
 
 		GridAlgorithm(const GridAlgorithm&);
@@ -49,31 +50,31 @@ namespace TwoDLib {
 
 		virtual void configure(const MPILib::SimulationRunParameter& simParam);
 
-		virtual MPILib::Time getCurrentTime() const {return _t_cur;}
+		virtual MPILib::Time getCurrentTime() const { return _t_cur; }
 
-	  virtual MPILib::Rate getCurrentRate() const {return _rate;}
+		virtual MPILib::Rate getCurrentRate() const { return _rate; }
 
-		virtual void assignNodeId( MPILib::NodeId );
+		virtual void assignNodeId(MPILib::NodeId);
 
-	  virtual MPILib::AlgorithmGrid getGrid(MPILib::NodeId, bool b_state = true) const;
+		virtual MPILib::AlgorithmGrid getGrid(MPILib::NodeId, bool b_state = true) const;
 
 		virtual void reportDensity(MPILib::Time t) const;
 
 		virtual void setupMasterSolver(double cell_width);
 
 		virtual void prepareEvolve(const std::vector<MPILib::Rate>& nodeVector,
-				const std::vector<MPILib::CustomConnectionParameters>& weightVector,
-				const std::vector<MPILib::NodeType>& typeVector);
+			const std::vector<MPILib::CustomConnectionParameters>& weightVector,
+			const std::vector<MPILib::NodeType>& typeVector);
 
 		using MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>::evolveNodeState;
 		virtual void evolveNodeState(const std::vector<MPILib::Rate>& nodeVector,
-				const std::vector<MPILib::CustomConnectionParameters>& weightVector, MPILib::Time time);
+			const std::vector<MPILib::CustomConnectionParameters>& weightVector, MPILib::Time time);
 
 		virtual void applyMasterSolver(std::vector<MPILib::Rate> rates);
 
-		void InitializeDensity(MPILib::Index i, MPILib::Index j){_sys.Initialize(0,i,j);}
+		void InitializeDensity(MPILib::Index i, MPILib::Index j) { _sys.Initialize(0, i, j); }
 
-		const Ode2DSystemGroup& Sys() const {return _sys; }
+		const Ode2DSystemGroup& Sys() const { return _sys; }
 
 		std::vector<std::vector<TwoDLib::Redistribution>> ReversalMap() const { return _vec_vec_rev; }
 
@@ -113,7 +114,7 @@ namespace TwoDLib {
 		std::vector<std::vector<MPILib::DelayedConnectionQueue>> _vec_vec_delay_queues;
 
 		TransitionMatrix 							_transformMatrix;
-		CSRMatrix*										_csr_transform;
+		CSRMatrix*                                  _csr_transform;
 		vector<double>								_mass_swap;
 		vector<double>								_efficacy_map;
 
@@ -122,7 +123,7 @@ namespace TwoDLib {
 		double _start_v;
 		double _start_w;
 
-		const vector<double>& (TwoDLib::Ode2DSystemGroup::*_sysfunction) () const;
+		const vector<double>& (TwoDLib::Ode2DSystemGroup::* _sysfunction) () const;
 
 	protected:
 
@@ -132,7 +133,7 @@ namespace TwoDLib {
 		pugi::xml_node CreateRootNode(const std::string&);
 		std::vector<TwoDLib::Redistribution> Mapping(const std::string&);
 
-  };
+	};
 }
 
 #endif

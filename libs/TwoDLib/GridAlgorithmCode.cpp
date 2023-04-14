@@ -20,7 +20,8 @@ namespace TwoDLib {
 		double start_w,
 		MPILib::Time tau_refractive,
 		const std::string&  rate_method,
-		const unsigned int num_objects
+		const unsigned int num_objects,
+		std::vector<double> kernel
 	):
 	_model_name(model_name),
 	_rate_method(rate_method),
@@ -33,7 +34,7 @@ namespace TwoDLib {
 	_vec_tau_refractive(std::vector<MPILib::Time>({tau_refractive})),
 	_dt(_vec_mesh[0].TimeStep()),
 	_vec_num_objects(CreateNumObjects(num_objects)),
-	_sys(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects),
+	_sys(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects, { 2.5, 0.5 }),
 	_n_evolve(0),
 	_n_steps(0),
 	_sysfunction(rate_method == "AvgV" ? &TwoDLib::Ode2DSystemGroup::AvgV : &TwoDLib::Ode2DSystemGroup::F),
@@ -61,7 +62,7 @@ namespace TwoDLib {
 	_dt(_vec_mesh[0].TimeStep()),
 	_vec_tau_refractive(rhs._vec_tau_refractive),
 	_vec_num_objects(rhs._vec_num_objects),
-	_sys(_vec_mesh,_vec_vec_rev,_vec_vec_res,_vec_tau_refractive, rhs._vec_num_objects),
+	_sys(_vec_mesh,_vec_vec_rev,_vec_vec_res,_vec_tau_refractive, rhs._vec_num_objects, rhs._sys._vec_kernel),
 	_n_evolve(0),
 	_n_steps(0),
 	_sysfunction(rhs._sysfunction),
@@ -227,9 +228,12 @@ namespace TwoDLib {
 				_sys.updateVecCellsToObjects();
 			}
 			else {
+
 #pragma omp parallel for
-				for (int id = 0; id < _mass_swap.size(); id++)
-					_mass_swap[id] = 0.;
+				for (int id = 0; id < _mass_swap.size(); id++) {
+					_mass_swap[id] = 0.0;
+					
+				}
 
 				_csr_transform->MV(_mass_swap, _sys._vec_mass);
 
@@ -237,23 +241,32 @@ namespace TwoDLib {
 			}
 	    }
 
-			// WARNING: originally reset goes afvirtual void applyMasterSolver();ter master but this way,
-			// we can guarantee there's no mass above threshold when running
-			// MVGrid in MasterGrid
-			_sys.RedistributeProbability(_n_steps);
-
-			std::vector<std::vector<MPILib::Rate>> vec_rates;
-			for(unsigned int i=0; i<_vec_vec_delay_queues.size(); i++){
-				std::vector<MPILib::Rate> rates;
-				for(unsigned int j=0; j<_vec_vec_delay_queues[i].size(); j++){
-					rates.push_back(_vec_vec_delay_queues[i][j].getCurrentRate());
-				}
-				vec_rates.push_back(rates);
+		if (_sys._vec_masses.size() > 0) {
+			//shift histories
+			for (int history = _sys._vec_masses.size() - 1; history > 0; history--) {
+				_sys._vec_masses.at(history) = _sys._vec_masses.at(history - 1);
 			}
+			//add history
+			_sys._vec_masses.at(0) = _sys._vec_mass;
+		}
 
-			applyMasterSolver(vec_rates[0]);
+		// WARNING: originally reset goes afvirtual void applyMasterSolver();ter master but this way,
+		// we can guarantee there's no mass above threshold when running
+		// MVGrid in MasterGrid
+		_sys.RedistributeProbability(_n_steps);
 
-			_t_cur += _n_steps*_dt;
+		std::vector<std::vector<MPILib::Rate>> vec_rates;
+		for(unsigned int i=0; i<_vec_vec_delay_queues.size(); i++){
+			std::vector<MPILib::Rate> rates;
+			for(unsigned int j=0; j<_vec_vec_delay_queues[i].size(); j++){
+				rates.push_back(_vec_vec_delay_queues[i][j].getCurrentRate());
+			}
+			vec_rates.push_back(rates);
+		}
+
+		applyMasterSolver(vec_rates[0]);
+
+		_t_cur += _n_steps*_dt;
 
  	    _rate = (_sys.*_sysfunction)()[0];
 

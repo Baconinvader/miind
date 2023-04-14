@@ -24,7 +24,6 @@
 #include "Ode2DSystemGroup.hpp"
 #include "TwoDLibException.hpp"
 
-
 using namespace TwoDLib;
 
 
@@ -95,6 +94,7 @@ std::vector<Ode2DSystemGroup::ObjectReversal> Ode2DSystemGroup::InitializeObject
 	return vec_ret;
 }
 
+
 Ode2DSystemGroup::Ode2DSystemGroup
 (
 	const std::vector<Mesh>& mesh_list,
@@ -102,6 +102,16 @@ Ode2DSystemGroup::Ode2DSystemGroup
 	const std::vector<std::vector<Redistribution> >& vec_reset,
 	const std::vector<MPILib::Time>& vec_tau_refractive,
 	const std::vector<MPILib::Index> num_objects
+) : Ode2DSystemGroup(mesh_list, vec_reversal, vec_reset, vec_tau_refractive, num_objects, std::vector<double>{1.0} ) { } //TODO improve constructors?
+
+Ode2DSystemGroup::Ode2DSystemGroup
+(
+	const std::vector<Mesh>& mesh_list,
+	const std::vector<std::vector<Redistribution> >& vec_reversal,
+	const std::vector<std::vector<Redistribution> >& vec_reset,
+	const std::vector<MPILib::Time>& vec_tau_refractive,
+	const std::vector<MPILib::Index> num_objects,
+	const std::vector<double> kernel
 ):
 _mesh_list(mesh_list),
 _vec_mesh_offset(MeshOffset(mesh_list)),
@@ -110,6 +120,8 @@ _vec_cumulative(InitializeCumulatives(mesh_list)),
 _vec_vs(MeshVs(mesh_list)),
 _vec_tau_refractive(vec_tau_refractive),
 _vec_mass(InitializeMass()),
+_vec_kernel(InitializeKernel(kernel)),
+_vec_masses(InitializeMasses(kernel.size())),
 _vec_area(InitializeArea(mesh_list)),
 _t(0),
 _fs(std::vector<MPILib::Rate>(mesh_list.size(),0.0)),
@@ -132,6 +144,10 @@ _vec_num_object_offsets(FiniteSizeOffset(num_objects))
 
 {
 	InitializeFiniteObjects();
+	if (kernel.size() > 1) {
+		InitializeFiniteObjectHistories(kernel.size());
+	}
+	
 
 	for(const auto& m: _mesh_list)
 		assert(m.TimeStep() != 0.0);
@@ -173,55 +189,18 @@ Ode2DSystemGroup::Ode2DSystemGroup
 	const std::vector<std::vector<Redistribution> >& vec_reversal,
 	const std::vector<std::vector<Redistribution> >& vec_reset,
 	const std::vector<MPILib::Index> num_objects
-):
-_mesh_list(mesh_list),
-_vec_mesh_offset(MeshOffset(mesh_list)),
-_vec_length(InitializeLengths(mesh_list)),
-_vec_cumulative(InitializeCumulatives(mesh_list)),
-_vec_vs(MeshVs(mesh_list)),
-_vec_tau_refractive(std::vector<MPILib::Time>(mesh_list.size(),0.0)),
-_vec_mass(InitializeMass()),
-_vec_area(InitializeArea(mesh_list)),
-_t(0),
-_fs(std::vector<MPILib::Rate>(mesh_list.size(),0.0)),
-_all_avs(std::vector<std::vector<MPILib::Potential>>(mesh_list.size())),
-_avs(std::vector<MPILib::Potential>(mesh_list.size(), 0.0)),
-_map(InitializeMap()),
-_linear_map(InitializeLinearMap()),
-_linear_unmap(InitializeLinearMap()),
-_map_counter(InitializeMap()),
-_vec_reversal(vec_reversal),
-_vec_reset(vec_reset),
-_reversal(InitializeReversal()),
 
-_object_reversal(InitializeObjectReversal()),
-_reset(InitializeReset()),
-_reset_refractive(InitializeResetRefractiveInternal(mesh_list[0].TimeStep())),
-_object_reset(InitializeObjectReset()),
-_clean(InitializeClean()),
-_vec_num_objects(num_objects),
-_vec_num_object_offsets(FiniteSizeOffset(num_objects))
-{
-	InitializeFiniteObjects();
+) : Ode2DSystemGroup(mesh_list, vec_reversal, vec_reset, std::vector<MPILib::Time>(mesh_list.size(), 0.0), num_objects) {}
 
-	for(const auto& m: _mesh_list)
-		assert(m.TimeStep() != 0.0);
+Ode2DSystemGroup::Ode2DSystemGroup
+(
+	const std::vector<Mesh>& mesh_list,
+	const std::vector<std::vector<Redistribution> >& vec_reversal,
+	const std::vector<std::vector<Redistribution> >& vec_reset,
+	const std::vector<double> kernel
 
-	this->CheckConsistency();
-
-	_vec_reset_sorted = std::vector<std::map<MPILib::Index, std::map<MPILib::Index, double>>>();
-
-	for (int r = 0; r < _vec_reset.size(); r++) {
-		std::map<MPILib::Index, std::map<MPILib::Index, double>> mapping = std::map<MPILib::Index, std::map<MPILib::Index, double>>();
-		for (auto res : _vec_reset[r]) {
-			if (mapping.count(Map(r, res._from[0], res._from[1])) == 0)
-				mapping[Map(r, res._from[0], res._from[1])] = std::map<MPILib::Index, double>();
-
-			mapping[Map(r, res._from[0], res._from[1])][Map(r, res._to[0], res._to[1])] = res._alpha;
-		}
-		_vec_reset_sorted.push_back(mapping);
-	}
-}
+) : Ode2DSystemGroup(mesh_list, vec_reversal, vec_reset, std::vector<MPILib::Time>(mesh_list.size(), 0.0), std::vector<MPILib::Index>(mesh_list.size()), kernel) {}
+  //Ode2DSystemGroup(mesh_list, vec_reversal, vec_reset, std::vector<MPILib::Time>(mesh_list.size(), 0.0), 0, kernel)
 
 std::vector<MPILib::Number> Ode2DSystemGroup::MeshOffset(const std::vector<Mesh>& l) const
 {
@@ -242,6 +221,7 @@ std::vector<MPILib::Index> Ode2DSystemGroup::FiniteSizeOffset(const std::vector<
 
 	for (const MPILib::Index& i : l) {
 		offsets.push_back(i + offsets.back());
+
 	}
 
 	return offsets;
@@ -293,6 +273,45 @@ vector<MPILib::Potential> Ode2DSystemGroup::InitializeMass() const
 	return vector<MPILib::Potential>(n_cells,0.0);
 }
 
+
+vector<double> Ode2DSystemGroup::InitializeKernel(const std::vector<double> kernel_values) const //TODO better input name
+{
+	vector<double> kernel;
+
+	if (kernel_values.size() == 0) {
+		//default
+		kernel = { 1.0 };
+	}
+	else {
+		double kernel_sum = 0.;
+		for (int h = 0; h < kernel_values.size(); h++) {
+			kernel.push_back(kernel_values.at(h));
+			kernel_sum += kernel_values.at(h);
+		}
+
+		if (kernel_sum != 1) {
+			std::cout << "Mesh kernel doesn't sum to 1 (sums to" << kernel_sum << "). This will lead to an incorrect probability mass." << std::endl;
+		}
+	}
+
+	return kernel;
+
+}
+
+vector<vector<MPILib::Potential>> Ode2DSystemGroup::InitializeMasses(const unsigned int count) const
+{
+
+	vector<vector<MPILib::Potential>> histories;
+
+	if (count > 1) {
+		for (int h = 0; h < count; h++) {
+			histories.push_back(InitializeMass());
+		}
+	}
+	
+	return histories;
+}
+
 void Ode2DSystemGroup::InitializeFiniteObjects() {
 	_vec_cells_to_objects = vector<vector<MPILib::Index>>(_vec_mass.size());
 	for (int i = 0; i < _vec_cells_to_objects.size(); i++) {
@@ -311,7 +330,10 @@ void Ode2DSystemGroup::InitializeFiniteObjects() {
 		_vec_objects_refract_times[i] = -1.0;
 		_vec_objects_refract_index[i] = 0;
 	}
+
 }
+
+
 
 
 std::vector<MPILib::Index> Ode2DSystemGroup::InitializeWorkingIndex()
@@ -360,11 +382,36 @@ void Ode2DSystemGroup::Initialize(MPILib::Index m, MPILib::Index i, MPILib::Inde
 
 	_vec_mass[start_index] = 1.0;
 
+	//histories
+	if (_vec_masses.size() > 1) {
+		for (int i = 0; i < _vec_masses.size(); i++) {
+			_vec_masses[i][start_index] = 1.0;
+		}
+	}
+
+	
+	
+
 	for (int i = 0; i < _vec_num_objects[m]; i++) {
 		_vec_objects_to_index[i+_vec_num_object_offsets[m]] = start_index;
 		_vec_objects_refract_times[i + _vec_num_object_offsets[m]] = -1.0;
 		_vec_objects_refract_index[i + _vec_num_object_offsets[m]] = 0;
 		_vec_cells_to_objects[start_index].push_back(i + _vec_num_object_offsets[m]);
+	}
+
+	for (int j = 0; j < _vec_masses.size(); j++) {
+		_vec_vec_objects_to_index[j][i + _vec_num_object_offsets[m]] = start_index;
+		_vec_vec_objects_refract_times[j][i + _vec_num_object_offsets[m]] = -1.0;
+		_vec_vec_objects_refract_index[j][i + _vec_num_object_offsets[m]] = 0;
+	}
+
+}
+
+void Ode2DSystemGroup::InitializeFiniteObjectHistories(const unsigned int count) {
+	for (unsigned int i = 0; i < count; i++) {
+		_vec_vec_objects_to_index.push_back(_vec_objects_to_index);
+		_vec_vec_objects_refract_times.push_back(_vec_objects_refract_times);
+		_vec_vec_objects_refract_index.push_back(_vec_objects_refract_index);
 	}
 }
 
@@ -454,6 +501,21 @@ void Ode2DSystemGroup::EvolveWithoutMeshUpdate(){
 	_t += 1;
 	for (MPILib::Rate& f: _fs)
 		f = 0.;
+}
+
+void Ode2DSystemGroup::ShiftFiniteObjectHistories() {
+	// shift histories
+	for (unsigned int i = 1; i < _vec_masses.size(); i++) {
+		_vec_vec_objects_to_index.at(i) = _vec_vec_objects_to_index.at(i - 1);
+		_vec_vec_objects_refract_times.at(i) = _vec_vec_objects_refract_times.at(i - 1);
+		//_vec_vec_objects_refract_index.at(i) = _vec_vec_objects_refract_index.at(i - 1);
+	}
+
+	// set new history
+	_vec_vec_objects_to_index[0] = _vec_objects_to_index;
+	_vec_vec_objects_refract_times[0] = _vec_objects_refract_times;
+	//_vec_vec_objects_refract_index[0] = _vec_objects_refract_index;
+
 }
 
 std::vector<MPILib::Index> Ode2DSystemGroup::BuildMapCumulatives() {
@@ -775,3 +837,4 @@ bool Ode2DSystemGroup::CheckConsistency() const {
 	}
 	return true;
 }
+

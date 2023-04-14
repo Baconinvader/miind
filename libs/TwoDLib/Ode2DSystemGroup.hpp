@@ -67,6 +67,17 @@ namespace TwoDLib {
 			const std::vector<MPILib::Time>&
 		);
 
+		//TODO: add this for other versions of the constructor
+		Ode2DSystemGroup
+		(
+			const std::vector<Mesh>&, 					       //!< A series of Mesh in the Python convention. Most models require a reversal bin that is not part of the grid. In that case it must be inserted into the Mesh by calling Mesh::InsertStationary. It is legal not to define an extra reversal bin, and use one of the existing Mesh cells at such, but in that case Cell (0,0) will not exist.
+			const std::vector< std::vector<Redistribution> >&, //!< A series of mappings from strip end to reversal bin
+			const std::vector< std::vector<Redistribution> >&,  //!< A series of mappings from threshold to reset bin
+			const std::vector<MPILib::Time>&,
+			const std::vector<MPILib::Index> num_objects,
+			const std::vector<double> kernel
+		);
+
 	  //! Constructor for a system group without refractive period. No queues for firing rates are created in the system group.
 		Ode2DSystemGroup
 		(
@@ -78,12 +89,22 @@ namespace TwoDLib {
 			const std::vector<MPILib::Index> num_objects
 		);
 
+
 		Ode2DSystemGroup
 		(
 			const std::vector<Mesh>&, 					       //!< A series of Mesh in the Python convention. Most models require a reversal bin that is not part of the grid. In that case it must be inserted into the Mesh by calling Mesh::InsertStationary. It is legal not to define an extra reversal bin, and use one of the existing Mesh cells at such, but in that case Cell (0,0) will not exist.
 			const std::vector< std::vector<Redistribution> >&, //!< A series of mappings from strip end to reversal bin
 			const std::vector< std::vector<Redistribution> >&,  //!< A series of mappings from threshold to reset bin
 			const std::vector<MPILib::Index> num_objects
+		);
+
+		Ode2DSystemGroup
+		(
+
+			const std::vector<Mesh>&, 					       //!< A series of Mesh in the Python convention. Most models require a reversal bin that is not part of the grid. In that case it must be inserted into the Mesh by calling Mesh::InsertStationary. It is legal not to define an extra reversal bin, and use one of the existing Mesh cells at such, but in that case Cell (0,0) will not exist.
+			const std::vector< std::vector<Redistribution> >&, //!< A series of mappings from strip end to reversal bin
+			const std::vector< std::vector<Redistribution> >&,  //!< A series of mappings from threshold to reset bin
+			const std::vector<double> kernel
 		);
 
 
@@ -115,6 +136,9 @@ namespace TwoDLib {
 		void Evolve(std::vector<MPILib::Index>& meshes);
 
 		void EvolveWithoutMeshUpdate();
+
+		//! Add a new finite object to the top history list, and shift the rest of the histories down
+		void ShiftFiniteObjectHistories();
 
 		//! Dump the current density profile (0), or the mass profile (1) to an output stream
 		void Dump(const std::vector<std::ostream*>&, int mode = 0) const;
@@ -379,6 +403,7 @@ namespace TwoDLib {
 		std::vector<double> MeshVs(const std::vector<Mesh>&) const;
 
 		void InitializeFiniteObjects();
+		void InitializeFiniteObjectHistories(const unsigned int count);
 
 		bool				  CheckConsistency() const;
 		std::vector<Reset>    InitializeReset();
@@ -390,6 +415,8 @@ namespace TwoDLib {
 
 		vector<MPILib::Potential>  	InitializeArea(const std::vector<Mesh>&) const;
 		vector<MPILib::Mass>        InitializeMass() const;
+		vector<vector<MPILib::Mass>> InitializeMasses(const unsigned int count) const;
+		vector<double> InitializeKernel(const std::vector<double> kernel) const;
 
 		std::vector< std::vector< std::vector<MPILib::Index> > > InitializeMap() const;
 		std::vector< MPILib::Index> InitializeLinearMap();
@@ -409,11 +436,20 @@ namespace TwoDLib {
 		std::vector<MPILib::Time>    _vec_tau_refractive;
 public:
 		vector<MPILib::Mass>	     	_vec_mass;
+
+		vector<vector<MPILib::Mass>>    _vec_masses; // used for holding a history of density mass
+		unsigned int                    _histories_count; // TODO is this used?
+		vector<double>                  _vec_kernel; // used for holding a weighting of densities to look up
+
 		vector<MPILib::Index>			_vec_objects_to_index;
 		vector<vector<MPILib::Index>>	_vec_cells_to_objects;
 		vector<double>					_vec_objects_refract_times; // not refracting -> val < 0, ready to reset -> val == 0
 		vector<MPILib::Index>			_vec_objects_refract_index; // holds the threshold index of each refracting object
 		std::vector<std::map<MPILib::Index, std::map<MPILib::Index, double>>> _vec_reset_sorted;
+
+		vector<vector<MPILib::Index>>	_vec_vec_objects_to_index; // used for holding a history of finite objects
+		vector<vector<double>>          _vec_vec_objects_refract_times; // used for holding a history of object refractory times
+		vector<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
 
 		void updateVecObjectsToIndex() {
 			for (int i = 0; i < _vec_cells_to_objects.size(); i++) {

@@ -34,7 +34,7 @@ namespace TwoDLib {
 	_vec_tau_refractive(std::vector<MPILib::Time>({tau_refractive})),
 	_dt(_vec_mesh[0].TimeStep()),
 	_vec_num_objects(CreateNumObjects(num_objects)),
-	_sys(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects, { 2.5, 0.5 }),
+	_sys(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects, { 1.0, 1.0, 0.5, 0.5, 0.2, 0.2, 0.1 }),
 	_n_evolve(0),
 	_n_steps(0),
 	_sysfunction(rate_method == "AvgV" ? &TwoDLib::Ode2DSystemGroup::AvgV : &TwoDLib::Ode2DSystemGroup::F),
@@ -215,7 +215,6 @@ namespace TwoDLib {
 		}
 	    // mass rotation
 	    for (MPILib::Index i = 0; i < _n_steps; i++){
-
 			_sys.EvolveWithoutMeshUpdate();
 
 			if (_vec_num_objects[0] > 0) {

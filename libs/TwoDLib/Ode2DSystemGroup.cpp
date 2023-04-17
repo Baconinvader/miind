@@ -144,9 +144,10 @@ _vec_num_object_offsets(FiniteSizeOffset(num_objects))
 
 {
 	InitializeFiniteObjects();
-	if (kernel.size() > 1) {
+	//TODO: re-add when finite objects is fixed
+	/*if (kernel.size() > 1) {
 		InitializeFiniteObjectHistories(kernel.size());
-	}
+	}*/
 	
 
 	for(const auto& m: _mesh_list)
@@ -290,7 +291,7 @@ vector<double> Ode2DSystemGroup::InitializeKernel(const std::vector<double> kern
 		}
 
 		if (kernel_sum != 1) {
-			std::cout << "Mesh kernel doesn't sum to 1 (sums to" << kernel_sum << "). This will lead to an incorrect probability mass." << std::endl;
+			std::cout << "Mesh kernel doesn't sum to 1 (sums to " << kernel_sum << "). This will lead to an incorrect probability mass." << std::endl;
 		}
 	}
 
@@ -388,8 +389,6 @@ void Ode2DSystemGroup::Initialize(MPILib::Index m, MPILib::Index i, MPILib::Inde
 			_vec_masses[i][start_index] = 1.0;
 		}
 	}
-
-	
 	
 
 	for (int i = 0; i < _vec_num_objects[m]; i++) {
@@ -399,21 +398,16 @@ void Ode2DSystemGroup::Initialize(MPILib::Index m, MPILib::Index i, MPILib::Inde
 		_vec_cells_to_objects[start_index].push_back(i + _vec_num_object_offsets[m]);
 	}
 
-	for (int j = 0; j < _vec_masses.size(); j++) {
+	//TODO: re-add when finite objects is fixed
+	/*for (int j = 0; j < _vec_masses.size(); j++) {
 		_vec_vec_objects_to_index[j][i + _vec_num_object_offsets[m]] = start_index;
 		_vec_vec_objects_refract_times[j][i + _vec_num_object_offsets[m]] = -1.0;
 		_vec_vec_objects_refract_index[j][i + _vec_num_object_offsets[m]] = 0;
-	}
+	}*/
 
 }
 
-void Ode2DSystemGroup::InitializeFiniteObjectHistories(const unsigned int count) {
-	for (unsigned int i = 0; i < count; i++) {
-		_vec_vec_objects_to_index.push_back(_vec_objects_to_index);
-		_vec_vec_objects_refract_times.push_back(_vec_objects_refract_times);
-		_vec_vec_objects_refract_index.push_back(_vec_objects_refract_index);
-	}
-}
+
 
 std::vector< std::vector< std::vector<MPILib::Index> > > Ode2DSystemGroup::InitializeMap() const
 {
@@ -503,7 +497,8 @@ void Ode2DSystemGroup::EvolveWithoutMeshUpdate(){
 		f = 0.;
 }
 
-void Ode2DSystemGroup::ShiftFiniteObjectHistories() {
+//TODO  re-add when finite objects is fixed
+/*void Ode2DSystemGroup::ShiftFiniteObjectHistories() {
 	// shift histories
 	for (unsigned int i = 1; i < _vec_masses.size(); i++) {
 		_vec_vec_objects_to_index.at(i) = _vec_vec_objects_to_index.at(i - 1);
@@ -516,7 +511,7 @@ void Ode2DSystemGroup::ShiftFiniteObjectHistories() {
 	_vec_vec_objects_refract_times[0] = _vec_objects_refract_times;
 	//_vec_vec_objects_refract_index[0] = _vec_objects_refract_index;
 
-}
+}*/
 
 std::vector<MPILib::Index> Ode2DSystemGroup::BuildMapCumulatives() {
 	std::vector<MPILib::Index> cumulatives;

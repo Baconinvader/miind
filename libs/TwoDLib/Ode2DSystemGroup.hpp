@@ -89,7 +89,6 @@ namespace TwoDLib {
 			const std::vector<MPILib::Index> num_objects
 		);
 
-
 		Ode2DSystemGroup
 		(
 			const std::vector<Mesh>&, 					       //!< A series of Mesh in the Python convention. Most models require a reversal bin that is not part of the grid. In that case it must be inserted into the Mesh by calling Mesh::InsertStationary. It is legal not to define an extra reversal bin, and use one of the existing Mesh cells at such, but in that case Cell (0,0) will not exist.
@@ -136,9 +135,6 @@ namespace TwoDLib {
 		void Evolve(std::vector<MPILib::Index>& meshes);
 
 		void EvolveWithoutMeshUpdate();
-
-		//! Add a new finite object to the top history list, and shift the rest of the histories down
-		void ShiftFiniteObjectHistories();
 
 		//! Dump the current density profile (0), or the mass profile (1) to an output stream
 		void Dump(const std::vector<std::ostream*>&, int mode = 0) const;
@@ -403,7 +399,8 @@ namespace TwoDLib {
 		std::vector<double> MeshVs(const std::vector<Mesh>&) const;
 
 		void InitializeFiniteObjects();
-		void InitializeFiniteObjectHistories(const unsigned int count);
+		//TODO: re-add when finite objects is fixed
+		//void InitializeFiniteObjectHistories(const unsigned int count);
 
 		bool				  CheckConsistency() const;
 		std::vector<Reset>    InitializeReset();
@@ -447,9 +444,12 @@ public:
 		vector<MPILib::Index>			_vec_objects_refract_index; // holds the threshold index of each refracting object
 		std::vector<std::map<MPILib::Index, std::map<MPILib::Index, double>>> _vec_reset_sorted;
 
+		//TODO  re-add when finite objects is fixed
+		/*
 		vector<vector<MPILib::Index>>	_vec_vec_objects_to_index; // used for holding a history of finite objects
 		vector<vector<double>>          _vec_vec_objects_refract_times; // used for holding a history of object refractory times
 		vector<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
+		*/
 
 		void updateVecObjectsToIndex() {
 			for (int i = 0; i < _vec_cells_to_objects.size(); i++) {

@@ -113,6 +113,26 @@ int SimulationParserCPU<WeightType>::interpretValueAsInt(std::string value) {
 	return std::stoi(_variables[value]);
 }
 
+template<class WeightType >
+std::vector<double> SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(pugi::xml_node node) {
+
+	std::cout << "val: " << node.value() << ", " << (node == 0) << std::endl;
+
+	if (!node)
+		return {};
+
+	std::vector<double> vec_values;
+	if (node) { //TODO better name
+		for (pugi::xml_node child_node = node.first_child(); child_node; child_node = child_node.next_sibling())
+		{
+			vec_values.push_back(interpretValueAsDouble(std::string(child_node.first_child().value())));
+		}
+	}
+
+
+	return vec_values;
+}
+
 template<class WeightType>
 void SimulationParserCPU<WeightType>::endSimulation() {
 	_connections.clear();
@@ -244,7 +264,8 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 			double time_step = interpretValueAsDouble(std::string(algorithm.child_value("TimeStep")));
 			std::string activity_mode = interpretValueAsString(std::string(algorithm.attribute("ratemethod").value()));
 
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::GridAlgorithm(model_filename, transform_filename, time_step, start_v, start_w, tau_refractive, activity_mode, num_objects));
+			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::GridAlgorithm(model_filename, transform_filename, time_step, start_v, start_w, tau_refractive, activity_mode, num_objects, kernel_values));
 		}
 
 		if (std::string("GridSomaDendriteAlgorithm") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {

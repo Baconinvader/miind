@@ -33,230 +33,249 @@
 
 namespace MPILib {
 
-/**
- * \brief Class for nodes in an MPINetwork.
- *
- * An MPINode is responsible for maintaing an algorithm through a shared_ptr to an  AlgorithmInterface object. It is also responsible
- * for being aware of who its predecessors and successors are in the network and thereby inplements the connectivity table. Most of the
- * MPI communication is handled by this class. MPINode::receiveData and MPINode::sendOwnData are used to transmit information about its state, and to
- * collate information about its precursor nodes so that this information can be passed on to its AlgorithmInterface instance.
- * Two hooks are provided for designers of AlgorithmInterface classes:
- * MPINode::prepareEvolve calls AlgorithmInterface::prepareEvolve, which allows algorithms to collate input contributions to this particular node,
- * whilst MPINode::evolve calls AlgorithmInterface::evolve. These methods can then be overloaded by the designers of a sub class of AlgorithmInterface,
- * i.e. the designers of algorithms. The separation between prepareEvolve and evolve ensure that synchronous network updating can be implemented.
- * The MPINetwork::addPrecursor and MPI::Network::addSuccesor are used by MPINetwork::addNode.
- */
-
-template<class Weight, class NodeDistribution>
-class MPINode {
-public:
-
 	/**
-	 * Constructor
-	 * @param algorithm Algorithm the algorithm the node should contain
-	 * @param nodeType NodeType the type of the node
-	 * @param nodeId NodeId the id of the node
-	 * @param nodeDistribution The Node Distribution.
-	 * @param localNode The local nodes of this processor
+	 * \brief Class for nodes in an MPINetwork.
+	 *
+	 * An MPINode is responsible for maintaing an algorithm through a shared_ptr to an  AlgorithmInterface object. It is also responsible
+	 * for being aware of who its predecessors and successors are in the network and thereby inplements the connectivity table. Most of the
+	 * MPI communication is handled by this class. MPINode::receiveData and MPINode::sendOwnData are used to transmit information about its state, and to
+	 * collate information about its precursor nodes so that this information can be passed on to its AlgorithmInterface instance.
+	 * Two hooks are provided for designers of AlgorithmInterface classes:
+	 * MPINode::prepareEvolve calls AlgorithmInterface::prepareEvolve, which allows algorithms to collate input contributions to this particular node,
+	 * whilst MPINode::evolve calls AlgorithmInterface::evolve. These methods can then be overloaded by the designers of a sub class of AlgorithmInterface,
+	 * i.e. the designers of algorithms. The separation between prepareEvolve and evolve ensure that synchronous network updating can be implemented.
+	 * The MPINetwork::addPrecursor and MPI::Network::addSuccesor are used by MPINetwork::addNode.
 	 */
-	explicit MPINode(
+
+	template<class Weight, class NodeDistribution>
+	class MPINode {
+	public:
+
+		/**
+		 * Constructor
+		 * @param algorithm Algorithm the algorithm the node should contain
+		 * @param nodeType NodeType the type of the node
+		 * @param nodeId NodeId the id of the node
+		 * @param nodeDistribution The Node Distribution.
+		 * @param localNode The local nodes of this processor
+		 */
+		explicit MPINode(
 			const AlgorithmInterface<Weight>& algorithm,
 			NodeType nodeType,
 			NodeId nodeId,
 			const NodeDistribution& nodeDistribution,
 			const std::map<NodeId, MPINode<Weight, NodeDistribution>>& localNode,
 			const std::string& name = ""
-			);
+		);
 
-	/**
-	 * Destructor
-	 */
-	virtual ~MPINode();
+		/**
+		 * Destructor
+		 */
+		virtual ~MPINode();
 
-	/**
-	 * Evolve this algorithm over a time
-	 * @param time Time until the algorithm should evolve
-	 * @return Time the algorithm have evolved, which may be slightly different, due to rounding errors.
-	 */
-	Time evolve(Time time);
+		/**
+		 * Evolve this algorithm over a time
+		 * @param time Time until the algorithm should evolve
+		 * @return Time the algorithm have evolved, which may be slightly different, due to rounding errors.
+		 */
+		Time evolve(Time time);
 
-	/**
-	 * Called before each evolve call during each evolve. Can
-	 * be used to prepare the input for the evolve method.
-	 */
-	void prepareEvolve();
+		/**
+		 * Called before each evolve call during each evolve. Can
+		 * be used to prepare the input for the evolve method.
+		 */
+		void prepareEvolve();
 
-	/**
-	 * Configure the Node with the Simulation Parameters
-	 * @param simParam Simulation Parameters
-	 */
-	void configureSimulationRun(const SimulationRunParameter& simParam);
+		/**
+		 * Configure the Node with the Simulation Parameters
+		 * @param simParam Simulation Parameters
+		 */
+		void configureSimulationRun(const SimulationRunParameter& simParam);
 
-	/**
-	 * Add a precursor to the current node
-	 * @param nodeId NodeId the id of the precursor
-	 * @param weight the weight of the connection
-	 * @param nodeType the nodeType of the precursor
-	 */
-	void addPrecursor(NodeId nodeId, const Weight& weight, NodeType nodeType);
+		/**
+		 * Add a precursor to the current node
+		 * @param nodeId NodeId the id of the precursor
+		 * @param weight the weight of the connection
+		 * @param nodeType the nodeType of the precursor
+		 */
+		void addPrecursor(NodeId nodeId, const Weight& weight, NodeType nodeType);
 
-	/**
-	 * Add a successor to the current node
-	 * @param nodeId NodeId the id of the successor
-	 */
-	void addSuccessor(NodeId nodeId);
+		/**
+		 * Add a precursor to the current node
+		 * @param nodeId NodeId the id of the precursor
+		 * @param weight the weight of the connection
+		 * @param nodeType the nodeType of the precursor
+		 * @param kernel used in the precursor node
+		 */
+		void addPrecursor(NodeId nodeId, const Weight& weight, NodeType nodeType, std::vector<double> kernel);
 
-	/**
-	 * Getter for the Nodes activity
-	 * @return The current node activity
-	 */
-	ActivityType getActivity() const;
+		/**
+		 * Add a successor to the current node
+		 * @param nodeId NodeId the id of the successor
+		 */
+		void addSuccessor(NodeId nodeId);
 
-	/**
-	 * The Setter for the node activity
-	 * @param activity The activity the node should be in
-	 */
-	void setActivity(ActivityType activity);
+		/**
+		 * Getter for the Nodes activity
+		 * @return The current node activity
+		 */
+		ActivityType getActivity() const;
 
-	/**
-	 * Receive the new data from the precursor nodes
-	 */
-	void receiveData();
+		/**
+		 * The Setter for the node activity
+		 * @param activity The activity the node should be in
+		 */
+		void setActivity(ActivityType activity);
 
-	/**
-	 * Send the own state to the successors.
-	 */
-	void sendOwnActivity();
+		/**
+		 * Receive the new data from the precursor nodes
+		 */
+		void receiveData();
 
-	/**
-	 * Report the node state
-	 * @param type The type of Report
-	 */
-	void reportAll(report::ReportType type) const;
+		/**
+		 * Send the own state to the successors.
+		 */
+		void sendOwnActivity();
 
-	/**
-	 * finishes the simulation.
-	 */
-	void clearSimulation();
+		/**
+		 * Report the node state
+		 * @param type The type of Report
+		 */
+		void reportAll(report::ReportType type) const;
 
-	/**
-	 * returns the type of the node
-	 */
-	NodeType getNodeType() const;
+		/**
+		 * finishes the simulation.
+		 */
+		void clearSimulation();
 
-	/**
-	 * Wait that all communication is finished
-	 */
-	static void waitAll();
+		/**
+		 * returns the type of the node
+		 */
+		NodeType getNodeType() const;
 
-	/**
-	 * Get this node's Id
-	 */
-	NodeId getNodeId() const;
+		/**
+		 * Wait that all communication is finished
+		 */
+		static void waitAll();
 
-	/**
-	 * Expose current activity
-	 */
-	ActivityType getActivity();
+		/**
+		 * Get this node's Id
+		 */
+		NodeId getNodeId() const;
 
-	/**
-	 * Expose External precursor's activity
-	 */
-	ActivityType getExternalPrecursorActivity(unsigned int external_id);
-	void setExternalPrecurserActivity(unsigned int external_id, ActivityType activity);
+		/**
+		* Get the kernel from this node's Algorithm. Used by MPINetwork for setting precursors
+		*/
+		std::vector<double> getKernel() const;
 
-	/**
-	 * Receive the activity of external precursor, usually expext to
-	 * recieve from NodeId 0
-	 */
-	void recvExternalPrecurserActivity(NodeId id, int tag, unsigned int external_id);
+		/**
+		 * Expose current activity
+		 */
+		ActivityType getActivity();
 
-	/**
-   * Set up the weight and nodetype of the connection from the external precursor
-	 */
-	unsigned int setExternalPrecursor(const Weight& weight, NodeType nodeType);
+		/**
+		 * Expose External precursor's activity
+		 */
+		ActivityType getExternalPrecursorActivity(unsigned int external_id);
+		void setExternalPrecurserActivity(unsigned int external_id, ActivityType activity);
 
-protected:
+		/**
+		 * Receive the activity of external precursor, usually expext to
+		 * recieve from NodeId 0
+		 */
+		void recvExternalPrecurserActivity(NodeId id, int tag, unsigned int external_id);
 
-	/**
-	 * Store the nodeIds of the Precursors
-	 */
-	std::vector<NodeId> _precursors;
+		/**
+	   * Set up the weight and nodetype of the connection from the external precursor
+		 */
+		unsigned int setExternalPrecursor(const Weight& weight, NodeType nodeType);
 
-	/**
-	 * Store the weights of the connections to the precursors
-	 */
-	std::vector<Weight> _weights;
+	protected:
 
-	/**
-	 * Store the _precursorTypes
-	 */
-	std::vector<NodeType> _precursorTypes;
+		/**
+		 * Store the nodeIds of the Precursors
+		 */
+		std::vector<NodeId> _precursors;
 
-	/**
-	 * Store the nodeIds of the successors
-	 */
-	std::vector<NodeId> _successors;
+		/**
+		* For LOCAL precursors, store a vector of kernels
+		*/
+		std::vector< std::vector<double> > _precursor_kernels;
 
-	/**
-	 * A Pointer that holds the Algorithm
-	 */
-	std::shared_ptr<AlgorithmInterface<Weight>> _pAlgorithm;
+		/**
+		 * Store the weights of the connections to the precursors
+		 */
+		std::vector<Weight> _weights;
 
-	/**
-	 * The type of this node needed for dales law
-	 */
-	NodeType _nodeType;
+		/**
+		 * Store the _precursorTypes
+		 */
+		std::vector<NodeType> _precursorTypes;
 
-	/**
-	 * the Id of this node
-	 */
-	NodeId _nodeId;
+		/**
+		 * Store the nodeIds of the successors
+		 */
+		std::vector<NodeId> _successors;
 
-	/**
-	 * Reference to the local nodes of the processor. They are owned by the network.
-	 */
-	const std::map<NodeId, MPINode<Weight, NodeDistribution>>& _rLocalNodes;
-	/**
-	 * Reference to the NodeDistribution. This is owned by the network.
-	 */
-	const NodeDistribution& _rNodeDistribution;
+		/**
+		 * A Pointer that holds the Algorithm
+		 */
+		std::shared_ptr<AlgorithmInterface<Weight>> _pAlgorithm;
 
-	/**
-	 *  A node can have a name
-	 */
-	const std::string _name;
-	/**
-	 * Activity of this node
-	 */
-	ActivityType _activity = 0;
+		/**
+		 * The type of this node needed for dales law
+		 */
+		NodeType _nodeType;
 
-	/**
-	 * Storage for the state of the precursors, to avoid to much communication.
-	 */
-	std::vector<ActivityType> _precursorActivity;
+		/**
+		 * the Id of this node
+		 */
+		NodeId _nodeId;
 
-	/**
-	 * The details of the connection and activity of the external precursor into
-	 * this node.
-	 * Flags suck but are marginally better than checking default values!
-	 */
-	bool _hasExternalPrecursor = false;
-	unsigned int _external_precurser_count = 0;
-	std::vector < ActivityType > _externalPrecursorActivity;
-	std::vector < Weight > _externalPrecursorWeight;
-	std::vector < NodeType > _externalPrecursorType;
+		/**
+		 * Reference to the local nodes of the processor. They are owned by the network.
+		 */
+		const std::map<NodeId, MPINode<Weight, NodeDistribution>>& _rLocalNodes;
+		/**
+		 * Reference to the NodeDistribution. This is owned by the network.
+		 */
+		const NodeDistribution& _rNodeDistribution;
 
-	Number _number_iterations = 0;
-	Number _maximum_iterations = 0;
+		/**
+		 *  A node can have a name
+		 */
+		const std::string _name;
+		/**
+		 * Activity of this node
+		 */
+		ActivityType _activity = 0;
 
-	/**
-	 * Pointer to the Report Handler
-	 */
-	std::shared_ptr<report::handler::AbstractReportHandler> _pHandler;
-};
+		/**
+		 * Storage for the state of the precursors, to avoid to much communication.
+		 */
+		std::vector<ActivityType> _precursorActivity;
 
-typedef MPINode<double, utilities::CircularDistribution> D_MPINode;
+		/**
+		 * The details of the connection and activity of the external precursor into
+		 * this node.
+		 * Flags suck but are marginally better than checking default values!
+		 */
+		bool _hasExternalPrecursor = false;
+		unsigned int _external_precurser_count = 0;
+		std::vector < ActivityType > _externalPrecursorActivity;
+		std::vector < Weight > _externalPrecursorWeight;
+		std::vector < NodeType > _externalPrecursorType;
+
+		Number _number_iterations = 0;
+		Number _maximum_iterations = 0;
+
+		/**
+		 * Pointer to the Report Handler
+		 */
+		std::shared_ptr<report::handler::AbstractReportHandler> _pHandler;
+	};
+
+	typedef MPINode<double, utilities::CircularDistribution> D_MPINode;
 
 } //end namespace
 

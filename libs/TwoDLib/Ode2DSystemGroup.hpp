@@ -38,14 +38,14 @@ namespace TwoDLib {
 	class TransitionMatrix;
 
 
-	  /**
-	   * \brief Responsible for representing the density and deterministic evolution.
-	   *
-	   * This create an object that is similar in functionality to an Ode2DSystem, but for a group
-	   * of meshes, so that the densities are stored in a single array, with the aim of vectorizing an
-	   * Algorithm. You are strongly encouraged to test the Meshes and Mappings in a stand alone MeshAlgorithm simulation
-	   * as this algorithm has more extensive checking for consistency between mesh and mappings.
-	   */
+	/**
+	 * \brief Responsible for representing the density and deterministic evolution.
+	 *
+	 * This create an object that is similar in functionality to an Ode2DSystem, but for a group
+	 * of meshes, so that the densities are stored in a single array, with the aim of vectorizing an
+	 * Algorithm. You are strongly encouraged to test the Meshes and Mappings in a stand alone MeshAlgorithm simulation
+	 * as this algorithm has more extensive checking for consistency between mesh and mappings.
+	 */
 
 	class Ode2DSystemGroup {
 	public:
@@ -78,7 +78,7 @@ namespace TwoDLib {
 			const std::vector<double> kernel
 		);
 
-	  //! Constructor for a system group without refractive period. No queues for firing rates are created in the system group.
+		//! Constructor for a system group without refractive period. No queues for firing rates are created in the system group.
 		Ode2DSystemGroup
 		(
 			const std::vector<Mesh>&, 					       //!< A series of Mesh in the Python convention. Most models require a reversal bin that is not part of the grid. In that case it must be inserted into the Mesh by calling Mesh::InsertStationary. It is legal not to define an extra reversal bin, and use one of the existing Mesh cells at such, but in that case Cell (0,0) will not exist.
@@ -88,6 +88,7 @@ namespace TwoDLib {
 			const std::vector<MPILib::Time>&,
 			const std::vector<MPILib::Index> num_objects
 		);
+
 
 		Ode2DSystemGroup
 		(
@@ -108,18 +109,20 @@ namespace TwoDLib {
 
 
 		//! Place all initial density in a cell with coordinates (m,i,j)
-		void Initialize(MPILib::Index, MPILib::Index,MPILib::Index);
+		void Initialize(MPILib::Index, MPILib::Index, MPILib::Index);
 
 		//! Map coordinates to a position in the density array. Map(0,0) may be defined or not, this depends on the Mesh and whether Mesh::InsertStationary
 		//! was called. The safe way to use Map is in a loop that uses Mesh::NrCellsInStrip and Mesh::NrQuadrilateralStrips.
 		MPILib::Index Map(
-				unsigned int kmesh,   //! mesh number
-				unsigned int istrip,  //! strip number
-				unsigned int jcell    //! cell number
-				) const {return _map[kmesh][istrip][jcell];}
+			unsigned int kmesh,   //! mesh number
+			unsigned int istrip,  //! strip number
+			unsigned int jcell    //! cell number
+		) const {
+			return _map[kmesh][istrip][jcell];
+		}
 
 		//! Takes an index for the mass array and converts to the mapped version. This is used in the Master equation solvers
-		MPILib::Index Map(MPILib::Index i) const{ return _linear_map[i]; }
+		MPILib::Index Map(MPILib::Index i) const { return _linear_map[i]; }
 
 		MPILib::Index UnMap(MPILib::Index i) const { return _linear_unmap[i]; }
 
@@ -135,6 +138,10 @@ namespace TwoDLib {
 		void Evolve(std::vector<MPILib::Index>& meshes);
 
 		void EvolveWithoutMeshUpdate();
+
+		//! Add a new finite object to the top history list, and shift the rest of the histories down
+		// TODO: re-add this when finite stuff works
+		//void ShiftFiniteObjectHistories();
 
 		//! Dump the current density profile (0), or the mass profile (1) to an output stream
 		void Dump(const std::vector<std::ostream*>&, int mode = 0) const;
@@ -157,18 +164,18 @@ namespace TwoDLib {
 		void RedistributeObjects(MPILib::Time timestep);
 
 		//! Return the instantaneous firing rate
-		const vector<MPILib::Rate>& F() const {return _fs;}
+		const vector<MPILib::Rate>& F() const { return _fs; }
 
 		//! total probability mass in the system, should not be too far away from 1.0
 		MPILib::Mass P() const {
-			double total = std::accumulate(_vec_mass.begin(),_vec_mass.end(),0.0);
-			for(ResetRefractive r : _reset_refractive)
+			double total = std::accumulate(_vec_mass.begin(), _vec_mass.end(), 0.0);
+			for (ResetRefractive r : _reset_refractive)
 				total += r.getTotalProbInRefract();
 			return total;
 		}
 
 		//! average membrane potential, used for non-threshold crossing models such as Fitzhugh-Nagumo
-		const vector<MPILib::Potential>& AvgV() const ;
+		const vector<MPILib::Potential>& AvgV() const;
 
 		//! average values for each dimension
 		const std::vector<std::vector<MPILib::Potential>>& Avgs() const;
@@ -181,10 +188,10 @@ namespace TwoDLib {
 		const std::vector<Mesh>& MeshObjects() const { return _mesh_list; }
 
 		//! See what part of the mass array each Mesh is responsible for: the offsets are given as a function of mesh index
-		const std::vector<MPILib::Index>& Offsets() const {return _vec_mesh_offset; }
+		const std::vector<MPILib::Index>& Offsets() const { return _vec_mesh_offset; }
 
 		//! See which finite objects are associated with which mesh: the offsets are given as a function of mesh index
-		const std::vector<MPILib::Index>& FiniteSizeOffsets() const {return _vec_num_object_offsets; }
+		const std::vector<MPILib::Index>& FiniteSizeOffsets() const { return _vec_num_object_offsets; }
 
 		//! allow inspection of the Mesh objects
 		const std::vector<MPILib::Index>& FiniteSizeNumObjects() const { return _vec_num_objects; }
@@ -192,15 +199,15 @@ namespace TwoDLib {
 		const unsigned int NumObjects() const { return _vec_objects_to_index.size(); }
 
 		//! Provide access to the mass array
-	    vector<MPILib::Mass>& Mass() { return _vec_mass; }
+		vector<MPILib::Mass>& Mass() { return _vec_mass; }
 
 		const std::vector<double>& Vs() const { return _vec_vs; }
 
-	    //! Provide read access to the Reversal map
-		const std::vector<std::vector<Redistribution> >& MapReversal() const { return  _vec_reversal;}
+		//! Provide read access to the Reversal map
+		const std::vector<std::vector<Redistribution> >& MapReversal() const { return  _vec_reversal; }
 
-	    //! Provide read access to the Reversal map
-		const std::vector<std::vector<Redistribution> >& MapReset()    const { return  _vec_reset;}
+		//! Provide read access to the Reversal map
+		const std::vector<std::vector<Redistribution> >& MapReset()    const { return  _vec_reset; }
 
 		const std::vector<MPILib::Time> Tau_ref() const { return _vec_tau_refractive; }
 
@@ -211,10 +218,10 @@ namespace TwoDLib {
 		void    InitializeResetRefractive(MPILib::Time network_time_step);
 
 		friend class Master;
-	    friend class MasterOMP;
-	    friend class MasterOdeint;
+		friend class MasterOMP;
+		friend class MasterOdeint;
 
-	    friend void CheckSystem(const Ode2DSystemGroup&, const TransitionMatrix&, const std::vector<Redistribution>&, const std::vector<Redistribution>&, double);
+		friend void CheckSystem(const Ode2DSystemGroup&, const TransitionMatrix&, const std::vector<Redistribution>&, const std::vector<Redistribution>&, double);
 
 
 	private:
@@ -226,16 +233,16 @@ namespace TwoDLib {
 		class Reversal {
 		public:
 
-			Reversal(Ode2DSystemGroup& sys, vector<MPILib::Mass>& vec_mass, MPILib::Index m):_sys(sys),_vec_mass(vec_mass),_m(m){}
+			Reversal(Ode2DSystemGroup& sys, vector<MPILib::Mass>& vec_mass, MPILib::Index m) :_sys(sys), _vec_mass(vec_mass), _m(m) {}
 
-			void operator()(const Redistribution& map){
-				_vec_mass[_sys.Map(_m,map._to[0],map._to[1])] += _vec_mass[_sys.Map(_m,map._from[0],map._from[1])];
-				_vec_mass[_sys.Map(_m,map._from[0],map._from[1])] = 0;
+			void operator()(const Redistribution& map) {
+				_vec_mass[_sys.Map(_m, map._to[0], map._to[1])] += _vec_mass[_sys.Map(_m, map._from[0], map._from[1])];
+				_vec_mass[_sys.Map(_m, map._from[0], map._from[1])] = 0;
 			}
 
 		private:
-			Ode2DSystemGroup& 		_sys;
-			vector<MPILib::Mass>&   _vec_mass;
+			Ode2DSystemGroup& _sys;
+			vector<MPILib::Mass>& _vec_mass;
 			MPILib::Index     		_m;
 		};
 
@@ -266,30 +273,30 @@ namespace TwoDLib {
 		//! Implement the remapping of probability mass that hits threshold
 		class Reset {
 		public:
-			Reset(Ode2DSystemGroup& sys, vector<MPILib::Mass>& vec_mass,MPILib::Index m):_sys(sys),_vec_mass(vec_mass),_m(m){}
+			Reset(Ode2DSystemGroup& sys, vector<MPILib::Mass>& vec_mass, MPILib::Index m) :_sys(sys), _vec_mass(vec_mass), _m(m) {}
 
-			void operator()(const Redistribution& map){
-				MPILib::Mass from =  map._alpha*_vec_mass[_sys.Map(_m,map._from[0],map._from[1])];
-				_vec_mass[_sys.Map(_m,map._to[0],map._to[1])] += from;
+			void operator()(const Redistribution& map) {
+				MPILib::Mass from = map._alpha * _vec_mass[_sys.Map(_m, map._from[0], map._from[1])];
+				_vec_mass[_sys.Map(_m, map._to[0], map._to[1])] += from;
 				_sys._fs[_m] += from;
 			}
 
 		private:
 
-			Ode2DSystemGroup&		_sys;
-			vector<MPILib::Mass>&  	_vec_mass;
+			Ode2DSystemGroup& _sys;
+			vector<MPILib::Mass>& _vec_mass;
 			MPILib::Index       	_m;
 		};
 
 		//! Implement the remapping of objects that hit threshold
 		class ObjectReset {
 		public:
-			ObjectReset(Ode2DSystemGroup& sys, 
+			ObjectReset(Ode2DSystemGroup& sys,
 				vector<vector<MPILib::Index>>& vec_cell_to_obj,
 				vector<double>& vec_refract_times,
 				vector<MPILib::Index>& vec_refract_index,
 				MPILib::Time tau_refractive, MPILib::Index m)
-				:_sys(sys), 
+				:_sys(sys),
 				_vec_cells_to_objects(vec_cell_to_obj),
 				_vec_objects_refract_times(vec_refract_times),
 				_vec_objects_refract_index(vec_refract_index),
@@ -307,7 +314,7 @@ namespace TwoDLib {
 
 			Ode2DSystemGroup& _sys;
 			MPILib::Time _tau_refractive;
-			vector<vector<MPILib::Index>>& _vec_cells_to_objects; 
+			vector<vector<MPILib::Index>>& _vec_cells_to_objects;
 			vector<double>& _vec_objects_refract_times;
 			vector<MPILib::Index>& _vec_objects_refract_index;
 			MPILib::Index       	_m;
@@ -318,37 +325,37 @@ namespace TwoDLib {
 
 			ResetRefractive
 			(
-				Ode2DSystemGroup&                  sys,
-				vector<double>&               vec_mass,
+				Ode2DSystemGroup& sys,
+				vector<double>& vec_mass,
 				MPILib::Time                  network_time_step,
-		      		MPILib::Time                  tau_refractive,
+				MPILib::Time                  tau_refractive,
 				const vector<Redistribution>& vec_reset,
 				MPILib::Index m
-			):
-			  //_t_step(network_time_step),
-      			//_tau_refractive(tau_refractive),
-			_vec_reset(vec_reset),
-			_vec_queue(vec_reset.size(),MPILib::RefractoryQueue(network_time_step,tau_refractive)),
-			_sys(sys),
-			_vec_mass(vec_mass),
-			_m(m)
+			) :
+				//_t_step(network_time_step),
+				  //_tau_refractive(tau_refractive),
+				_vec_reset(vec_reset),
+				_vec_queue(vec_reset.size(), MPILib::RefractoryQueue(network_time_step, tau_refractive)),
+				_sys(sys),
+				_vec_mass(vec_mass),
+				_m(m)
 			{
 			}
 
 			void operator()(const Redistribution& map)
 			{
-				double from =  map._alpha*_vec_mass[_sys.Map(_m,map._from[0],map._from[1])];
+				double from = map._alpha * _vec_mass[_sys.Map(_m, map._from[0], map._from[1])];
 				_sys._fs[_m] += from;
 
 				MPILib::Index i = &map - &_vec_reset[0];
 				from = _vec_queue[i].updateQueue(from);
 
-				_vec_mass[_sys.Map(_m,map._to[0],map._to[1])] += from;
+				_vec_mass[_sys.Map(_m, map._to[0], map._to[1])] += from;
 			}
 
-			double getTotalProbInRefract() const{
+			double getTotalProbInRefract() const {
 				double total = 0.0;
-				for (MPILib::RefractoryQueue q : _vec_queue){
+				for (MPILib::RefractoryQueue q : _vec_queue) {
 					total += q.getTotalMass();
 				}
 				return total;
@@ -358,14 +365,14 @@ namespace TwoDLib {
 
 			MPILib::Index       	_m;
 
-		  //MPILib::Time                               _t_step;
-		  //MPILib::Time                               _tau_refractive;
+			//MPILib::Time                               _t_step;
+			//MPILib::Time                               _tau_refractive;
 
-			const vector<Redistribution>&              _vec_reset;
+			const vector<Redistribution>& _vec_reset;
 			vector<MPILib::RefractoryQueue>  					_vec_queue;
 
-			Ode2DSystemGroup&	                           _sys;
-			vector<double>&                            _vec_mass;
+			Ode2DSystemGroup& _sys;
+			vector<double>& _vec_mass;
 
 
 		};
@@ -376,17 +383,17 @@ namespace TwoDLib {
 		class Clean {
 		public:
 
-			Clean(Ode2DSystemGroup& sys, vector<MPILib::Mass>& vec_mass, MPILib::Index m):_sys(sys),_vec_mass(vec_mass),_m(m){
+			Clean(Ode2DSystemGroup& sys, vector<MPILib::Mass>& vec_mass, MPILib::Index m) :_sys(sys), _vec_mass(vec_mass), _m(m) {
 			}
 
-			void operator()(const Redistribution& map){
-				_vec_mass[_sys.Map(_m, map._from[0],map._from[1])] = 0.;
+			void operator()(const Redistribution& map) {
+				_vec_mass[_sys.Map(_m, map._from[0], map._from[1])] = 0.;
 			}
 
 		private:
 
-			Ode2DSystemGroup&		_sys;
-			vector<MPILib::Mass>&	_vec_mass;
+			Ode2DSystemGroup& _sys;
+			vector<MPILib::Mass>& _vec_mass;
 			MPILib::Index       	_m;
 		};
 
@@ -418,9 +425,9 @@ namespace TwoDLib {
 		std::vector< std::vector< std::vector<MPILib::Index> > > InitializeMap() const;
 		std::vector< MPILib::Index> InitializeLinearMap();
 		std::vector< MPILib::Index> InitializeWorkingIndex();
-		
 
-		const std::vector<Mesh>&    _mesh_list;
+
+		const std::vector<Mesh>& _mesh_list;
 
 		std::vector<MPILib::Number>              _vec_mesh_offset;
 		std::vector<std::vector<MPILib::Index> > _vec_length;
@@ -431,7 +438,7 @@ namespace TwoDLib {
 		std::vector<MPILib::Index>  _vec_num_object_offsets;
 
 		std::vector<MPILib::Time>    _vec_tau_refractive;
-public:
+	public:
 		vector<MPILib::Mass>	     	_vec_mass;
 
 		vector<vector<MPILib::Mass>>    _vec_masses; // used for holding a history of density mass
@@ -449,7 +456,7 @@ public:
 		vector<vector<MPILib::Index>>	_vec_vec_objects_to_index; // used for holding a history of finite objects
 		vector<vector<double>>          _vec_vec_objects_refract_times; // used for holding a history of object refractory times
 		vector<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
-		*/
+		*/ctor<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
 
 		void updateVecObjectsToIndex() {
 			for (int i = 0; i < _vec_cells_to_objects.size(); i++) {
@@ -461,7 +468,7 @@ public:
 		}
 
 		void updateVecCellsToObjects() {
-			for (int i=0; i< _vec_cells_to_objects.size(); i++)
+			for (int i = 0; i < _vec_cells_to_objects.size(); i++)
 				_vec_cells_to_objects[i].clear();
 
 			for (int i = 0; i < _vec_objects_to_index.size(); i++) {
@@ -469,7 +476,7 @@ public:
 					_vec_cells_to_objects[_vec_objects_to_index[i]].push_back(i);
 			}
 		}
-private:
+	private:
 		vector<MPILib::Potential>		_vec_area;
 
 		unsigned int					_t;

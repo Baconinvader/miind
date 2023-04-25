@@ -54,6 +54,12 @@ namespace TwoDLib {
 
 		virtual MPILib::Rate getCurrentRate() const { return _rate; }
 
+		/**
+		* The kernel of the node
+		* @return The kernel of the node
+		*/
+		virtual std::vector<double> getKernel() const { return _sys._vec_kernel; }
+
 		virtual void assignNodeId(MPILib::NodeId);
 
 		virtual MPILib::AlgorithmGrid getGrid(MPILib::NodeId, bool b_state = true) const;
@@ -70,7 +76,11 @@ namespace TwoDLib {
 		virtual void evolveNodeState(const std::vector<MPILib::Rate>& nodeVector,
 			const std::vector<MPILib::CustomConnectionParameters>& weightVector, MPILib::Time time);
 
-		virtual void applyMasterSolver(std::vector<MPILib::Rate> rates);
+		virtual void evolveNodeState(const std::vector<MPILib::Rate>& nodeVector,
+			const std::vector<MPILib::CustomConnectionParameters>& weightVector,
+			MPILib::Time time, const std::vector<std::vector<double>>& kernelVector);
+
+		virtual void applyMasterSolver(std::vector<MPILib::Rate> rates, const std::vector<std::vector<double>>& kernelVector);
 
 		void InitializeDensity(MPILib::Index i, MPILib::Index j) { _sys.Initialize(0, i, j); }
 

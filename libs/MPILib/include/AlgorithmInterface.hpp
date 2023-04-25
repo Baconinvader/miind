@@ -29,122 +29,168 @@
 
 namespace MPILib {
 
-/**
- * @brief The interface for all algorithm classes.
- *
- * This class provides the interface to which all developed algorithms need to implement.
- */
-template<class WeightValue>
-class AlgorithmInterface {
-public:
-
-	typedef WeightValue WeightType;
-
-	AlgorithmInterface()=default
-	;
-	virtual ~AlgorithmInterface() {
-	}
-	;
-
 	/**
-	 * Cloning operation, to provide each DynamicNode with its own
-	 * Algorithm instance. Clients use the naked pointer at their own risk.
+	 * @brief The interface for all algorithm classes.
+	 *
+	 * This class provides the interface to which all developed algorithms need to implement.
 	 */
-	virtual AlgorithmInterface* clone() const = 0;
+	template<class WeightValue>
+	class AlgorithmInterface {
+	public:
 
-	/**
-	 * Configure the Algorithm
-	 * @param simParam The simulation parameter
-	 */
-	virtual void configure(const SimulationRunParameter& simParam) = 0;
+		typedef WeightValue WeightType;
 
-	/**
-	 * Evolve the node state. Overwrite this method if your algorithm does not
-	 * need to know the NodeTypes.
-	 * @param rateVector Vector of the node States
-	 * @param weightVector Vector of the weights of the nodes
-	 * @param time Time point of the algorithm
-	 */
-	virtual void evolveNodeState(const std::vector<Rate>& rateVector,
+		AlgorithmInterface() = default
+			;
+		virtual ~AlgorithmInterface() {
+		}
+		;
+
+		/**
+		 * Cloning operation, to provide each DynamicNode with its own
+		 * Algorithm instance. Clients use the naked pointer at their own risk.
+		 */
+		virtual AlgorithmInterface* clone() const = 0;
+
+		/**
+		 * Configure the Algorithm
+		 * @param simParam The simulation parameter
+		 */
+		virtual void configure(const SimulationRunParameter& simParam) = 0;
+
+		/**
+		 * Evolve the node state. Overwrite this method if your algorithm does not
+		 * need to know the NodeTypes.
+		 * @param rateVector Vector of the node States
+		 * @param weightVector Vector of the weights of the nodes
+		 * @param time Time point of the algorithm
+		 */
+		virtual void evolveNodeState(const std::vector<Rate>& rateVector,
 			const std::vector<WeightValue>& weightVector, Time time) {
-		throw utilities::Exception("You need to overwrite this method in your algorithm"
-				" if you want to use it");
-	}
 
-	/**
-	 * Evolve the node state. In the default case it simply calls envolveNodeState
-	 * without the NodeTypes. However if an algorithm needs the nodeTypes
-	 * of the precursors overwrite this function.
-	 * @param nodeVector Vector of the node States
-	 * @param weightVector Vector of the weights of the nodes
-	 * @param time Time point of the algorithm
-	 * @param typeVector Vector of the NodeTypes of the precursors
-	 */
-	void evolveNodeState(const std::vector<Rate>& nodeVector,
+			throw utilities::Exception("You need to overwrite this method in your algorithm"
+				" if you want to use it");
+		}
+
+
+
+		/**
+		 * Evolve the node state. In the default case it simply calls envolveNodeState
+		 * without the NodeTypes. However if an algorithm needs the nodeTypes
+		 * of the precursors overwrite this function.
+		 * @param weightVector Vector of the weights of the nodes
+		 * @param time Time point of the algorithm
+		 * @param typeVector Vector of the NodeTypes of the precursors
+		 * @param kernelVector Vector of the kernels of the precursors
+		 */
+		virtual void evolveNodeState(const std::vector<Rate>& rateVector,
+			const std::vector<WeightValue>& weightVector, Time time,
+			const std::vector<std::vector<double>>& kernelVector) {
+			this->evolveNodeState(rateVector, weightVector, time);
+		}
+
+
+		/**
+		 * Evolve the node state. In the default case it simply calls envolveNodeState
+		 * without the NodeTypes. However if an algorithm needs the nodeTypes
+		 * of the precursors overwrite this function.
+		 * @param nodeVector Vector of the node States
+		 * @param weightVector Vector of the weights of the nodes
+		 * @param time Time point of the algorithm
+		 * @param typeVector Vector of the NodeTypes of the precursors
+		 */
+		virtual void evolveNodeState(const std::vector<Rate>& nodeVector,
 			const std::vector<WeightValue>& weightVector, Time time,
 			const std::vector<NodeType>& typeVector) {
-		this->evolveNodeState(nodeVector, weightVector, time);
-	}
+			this->evolveNodeState(nodeVector, weightVector, time);
+		}
 
-	/**
-	 * prepare the Evolve method
-	 * @param nodeVector Vector of the node States
-	 * @param weightVector Vector of the weights of the nodes
-	 * @param typeVector Vector of the NodeTypes of the precursors
-	 */
-	virtual void prepareEvolve(const std::vector<Rate>& nodeVector,
+		/**
+		 * Evolve the node state. In the default case it simply calls envolveNodeState
+		 * without the NodeTypes. However if an algorithm needs the nodeTypes
+		 * of the precursors overwrite this function.
+		 * @param nodeVector Vector of the node States
+		 * @param weightVector Vector of the weights of the nodes
+		 * @param time Time point of the algorithm
+		 * @param typeVector Vector of the NodeTypes of the precursors
+		 * @param kernelVector Vector of the kernels of the precursors
+		 */
+		virtual void evolveNodeState(const std::vector<Rate>& nodeVector,
+			const std::vector<WeightValue>& weightVector, Time time,
+			const std::vector<NodeType>& typeVector,
+			const std::vector<std::vector<double>>& kernelVector) {
+			this->evolveNodeState(nodeVector, weightVector, time, kernelVector);
+		}
+
+
+		/**
+		 * prepare the Evolve method
+		 * @param nodeVector Vector of the node States
+		 * @param weightVector Vector of the weights of the nodes
+		 * @param typeVector Vector of the NodeTypes of the precursors
+		 */
+		virtual void prepareEvolve(const std::vector<Rate>& nodeVector,
 			const std::vector<WeightValue>& weightVector,
-			const std::vector<NodeType>& typeVector){};
-
-	/**
-	 * The current timepoint
-	 * @return The current time point
-	 */
-	virtual Time getCurrentTime() const = 0;
-
-	/**
-	 * The calculated rate of the node
-	 * @return The rate of the node
-	 */
-	virtual Rate getCurrentRate() const = 0;
-
-	/**
-	 * Stores the algorithm state in a Algorithm Grid
-	 * @param NodeId, id of the node that needs to return the grid
-	 * @param b_state, return the entire state if true, a reduced grid with just the firing rate info if false
-	 * @return The state of the algorithm. The Grid must at least contain one element; an empty grid will cause a crash.
-	 */
-	virtual AlgorithmGrid getGrid(NodeId, bool b_state = true) const = 0;
-
-	/**
-	 * Provide the algorithm with an identifier for self-identification in
-	 * singleton reporters - by default this does nothing so not to
-	 * annoy the compiler.
-	**/
-	virtual void assignNodeId( NodeId ) {}
+			const std::vector<NodeType>& typeVector) {};
 
 
-	std::valarray<double>& getArrayState(AlgorithmGrid& grid) const
-	{
-		return grid.getArrayState();
-	}
+		/**
+		 * The current timepoint
+		 * @return The current time point
+		 */
+		virtual Time getCurrentTime() const = 0;
 
-	std::valarray<double>& getArrayInterpretation(AlgorithmGrid& grid) const
-	{
-		return grid.getArrayInterpretation();
-	}
+		/**
+		 * The calculated rate of the node
+		 * @return The rate of the node
+		 */
+		virtual Rate getCurrentRate() const = 0;
 
-	Number& getStateSize(AlgorithmGrid& grid) const
-	{
-		return grid.getStateSize();
-	}
+		/**
+		* The kernel of the node
+		* @return The kernel of the node
+		*/
+		virtual std::vector<double> getKernel() const {
+			return { 1.0 };
+		};
 
-	Number getStateSize(const AlgorithmGrid & grid) const
-	{
-		return grid.getStateSize();
-	}
+		/**
+		 * Stores the algorithm state in a Algorithm Grid
+		 * @param NodeId, id of the node that needs to return the grid
+		 * @param b_state, return the entire state if true, a reduced grid with just the firing rate info if false
+		 * @return The state of the algorithm. The Grid must at least contain one element; an empty grid will cause a crash.
+		 */
+		virtual AlgorithmGrid getGrid(NodeId, bool b_state = true) const = 0;
 
-};
+		/**
+		 * Provide the algorithm with an identifier for self-identification in
+		 * singleton reporters - by default this does nothing so not to
+		 * annoy the compiler.
+		**/
+		virtual void assignNodeId(NodeId) {}
+
+
+		std::valarray<double>& getArrayState(AlgorithmGrid& grid) const
+		{
+			return grid.getArrayState();
+		}
+
+		std::valarray<double>& getArrayInterpretation(AlgorithmGrid& grid) const
+		{
+			return grid.getArrayInterpretation();
+		}
+
+		Number& getStateSize(AlgorithmGrid& grid) const
+		{
+			return grid.getStateSize();
+		}
+
+		Number getStateSize(const AlgorithmGrid& grid) const
+		{
+			return grid.getStateSize();
+		}
+
+	};
 
 } /* namespace MPILib */
 #endif /* MPILIB_ALGORITHMS_ALGORITHMINTERFACE_HPP_ */

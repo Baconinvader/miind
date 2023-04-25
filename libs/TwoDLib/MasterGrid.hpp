@@ -39,16 +39,16 @@ namespace TwoDLib {
 		);
 
 		void MVGrid(
-			vector<double>&       dydt,
+			vector<double>& dydt,
 			const vector<double>& vec_mass,
 			double                rate,
-		  double stays,
-		  double goes,
-		  int offset_1,
+			double stays,
+			double goes,
+			int offset_1,
 			int offset_2) const;
 
 		MPILib::Index MVGridObject(
-			MPILib::Index start_index, 
+			MPILib::Index start_index,
 			int spikes,
 			double stays,
 			double goes,
@@ -56,7 +56,7 @@ namespace TwoDLib {
 			int offset_2) const;
 
 		void MVGridWithEfficacy(
-			vector<double>&       dydt,
+			vector<double>& dydt,
 			const vector<double>& vec_mass,
 			double                rate,
 			unsigned int          efficiacy_index) const;
@@ -65,6 +65,7 @@ namespace TwoDLib {
 		void CalculateStaticEfficiaciesForConductance(vector<double>& efficacy_map, vector<double>& rest_v);
 
 		void Apply(double t_step, const vector<double>& rates, vector<double>& efficacy_map);
+		void Apply(double t_step, const vector<double>& rates, vector<double>& efficacy_map, const vector<vector<double>>& kernels);
 		void ApplyFinitePoisson(double t_step, const vector<double>& rates, vector<double>& efficacy_map);
 
 		void operator()(const vector<double>&, vector<double>&, const double t = 0);
@@ -86,6 +87,7 @@ namespace TwoDLib {
 
 		const vector<double>* _p_vec_eff;
 		const vector<double>* _p_vec_rates;
+		const std::vector<std::vector<double> >* _p_vec_kernels;   // place holder for kernels
 	};
 }
 

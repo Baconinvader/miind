@@ -18,12 +18,12 @@ SimulationParserCPU<MPILib::CustomConnectionParameters>::SimulationParserCPU(con
 
 template<>
 SimulationParserCPU<MPILib::CustomConnectionParameters>::SimulationParserCPU(int num_nodes, const std::string xml_filename) :
-	SimulationParserCPU(num_nodes, xml_filename,std::map<std::string,std::string>()) {
+	SimulationParserCPU(num_nodes, xml_filename, std::map<std::string, std::string>()) {
 }
 
 template<>
 SimulationParserCPU<MPILib::CustomConnectionParameters>::SimulationParserCPU(const std::string xml_filename) :
-	SimulationParserCPU(1,xml_filename) {
+	SimulationParserCPU(1, xml_filename) {
 }
 
 template<>
@@ -33,12 +33,12 @@ SimulationParserCPU<MPILib::DelayedConnection>::SimulationParserCPU(int num_node
 
 template<>
 SimulationParserCPU<MPILib::DelayedConnection>::SimulationParserCPU(const std::string xml_filename, std::map<std::string, std::string> vars) :
-	SimulationParserCPU(1,xml_filename, vars) {
+	SimulationParserCPU(1, xml_filename, vars) {
 }
 
 template<>
 SimulationParserCPU<MPILib::DelayedConnection>::SimulationParserCPU(int num_nodes, const std::string xml_filename) :
-	SimulationParserCPU(num_nodes, xml_filename, std::map<std::string,std::string>()) {
+	SimulationParserCPU(num_nodes, xml_filename, std::map<std::string, std::string>()) {
 }
 
 template<>
@@ -54,23 +54,23 @@ SimulationParserCPU<double>::SimulationParserCPU(int num_nodes, const std::strin
 
 template<>
 SimulationParserCPU<double>::SimulationParserCPU(const std::string xml_filename, std::map<std::string, std::string> vars) :
-	SimulationParserCPU(1, xml_filename, vars){
+	SimulationParserCPU(1, xml_filename, vars) {
 }
 
 template<>
 SimulationParserCPU<double>::SimulationParserCPU(int num_nodes, const std::string xml_filename) :
-	SimulationParserCPU(num_nodes, xml_filename, std::map<std::string,std::string>()) {
+	SimulationParserCPU(num_nodes, xml_filename, std::map<std::string, std::string>()) {
 }
 
 template<>
 SimulationParserCPU<double>::SimulationParserCPU(const std::string xml_filename) :
-	SimulationParserCPU(1,xml_filename) {
+	SimulationParserCPU(1, xml_filename) {
 }
 
 
 template<class WeightType >
 std::string SimulationParserCPU<WeightType>::interpretValueAsString(std::string value) {
-	
+
 	if (_variables.find(value) == _variables.end()) // If the string isn't in the map, then assume it's just a string.
 		return value;
 
@@ -81,7 +81,7 @@ std::string SimulationParserCPU<WeightType>::interpretValueAsString(std::string 
 
 template<class WeightType >
 double SimulationParserCPU<WeightType>::interpretValueAsDouble(std::string value) {
-	
+
 	if (value == "")
 		return 0.0;
 
@@ -113,6 +113,7 @@ int SimulationParserCPU<WeightType>::interpretValueAsInt(std::string value) {
 	return std::stoi(_variables[value]);
 }
 
+//TODO document this
 template<class WeightType >
 std::vector<double> SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(pugi::xml_node node) {
 
@@ -125,6 +126,7 @@ std::vector<double> SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(pug
 	if (node) { //TODO better name
 		for (pugi::xml_node child_node = node.first_child(); child_node; child_node = child_node.next_sibling())
 		{
+			std::cout << "dbg kern " << child_node.first_child().value() << std::endl;
 			vec_values.push_back(interpretValueAsDouble(std::string(child_node.first_child().value())));
 		}
 	}
@@ -132,6 +134,8 @@ std::vector<double> SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(pug
 
 	return vec_values;
 }
+
+
 
 template<class WeightType>
 void SimulationParserCPU<WeightType>::endSimulation() {
@@ -174,7 +178,7 @@ void SimulationParserCPU<MPILib::CustomConnectionParameters>::addConnection(pugi
 
 template<>
 void SimulationParserCPU<MPILib::DelayedConnection>::addConnection(pugi::xml_node& xml_conn) {
-	
+
 
 	std::string in = interpretValueAsString(std::string(xml_conn.attribute("In").value())) + std::string("_") + std::to_string(_current_node);
 	std::string out = interpretValueAsString(std::string(xml_conn.attribute("Out").value())) + std::string("_") + std::to_string(_current_node);
@@ -184,7 +188,7 @@ void SimulationParserCPU<MPILib::DelayedConnection>::addConnection(pugi::xml_nod
 	char efficacy[255];
 	char delay[255];
 	std::sscanf(values.c_str(), "%s %s %s", num_connections, efficacy, delay);
-	
+
 	MPILib::DelayedConnection connection(interpretValueAsDouble(std::string(num_connections)), interpretValueAsDouble(std::string(efficacy)), interpretValueAsDouble(std::string(delay)));
 	_connections.push_back(connection);
 	MiindTvbModelAbstract<MPILib::DelayedConnection, MPILib::utilities::CircularDistribution>::network.makeFirstInputOfSecond(_node_ids[in], _node_ids[out], _connections.back());
@@ -229,7 +233,7 @@ void SimulationParserCPU<MPILib::DelayedConnection>::addIncomingConnection(pugi:
 	char efficacy[255];
 	char delay[255];
 	std::sscanf(values.c_str(), "%s %s %s", num_connections, efficacy, delay);
-	
+
 	MPILib::DelayedConnection connection(interpretValueAsDouble(std::string(num_connections)), interpretValueAsDouble(std::string(efficacy)), interpretValueAsDouble(std::string(delay)));
 	_connections.push_back(connection);
 	MiindTvbModelAbstract<MPILib::DelayedConnection, MPILib::utilities::CircularDistribution>::network.setNodeExternalPrecursor(_node_ids[node], _connections.back());
@@ -323,8 +327,8 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 			std::cout << "Found RateFunctor (Using a RateAlgorithm) " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("expression")));
-
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new MPILib::RateAlgorithm<MPILib::CustomConnectionParameters>(rate));
+			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new MPILib::RateAlgorithm<MPILib::CustomConnectionParameters>(rate, kernel_values));
 		}
 
 		if (std::string("RateAlgorithm") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {
@@ -334,8 +338,8 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 			std::cout << "Found RateAlgorithm " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("rate")));
-
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new MPILib::RateAlgorithm<MPILib::CustomConnectionParameters>(rate));
+			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new MPILib::RateAlgorithm<MPILib::CustomConnectionParameters>(rate, kernel_values));
 		}
 
 	}
@@ -363,7 +367,7 @@ void SimulationParserCPU< MPILib::DelayedConnection>::parseXMLAlgorithms(pugi::x
 				matrix_files.push_back(interpretValueAsString(std::string(matrix_file.child_value())));
 			}
 
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new TwoDLib::MeshAlgorithm<MPILib::DelayedConnection,TwoDLib::MasterOdeint>(model_filename, matrix_files, time_step, tau_refractive, activity_mode));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new TwoDLib::MeshAlgorithm<MPILib::DelayedConnection, TwoDLib::MasterOdeint>(model_filename, matrix_files, time_step, tau_refractive, activity_mode));
 		}
 
 		if (std::string("OUAlgorithm") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {
@@ -389,8 +393,8 @@ void SimulationParserCPU< MPILib::DelayedConnection>::parseXMLAlgorithms(pugi::x
 			std::cout << "Found RateFunctor (Using a RateAlgorithm) " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("expression")));
-
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new MPILib::RateAlgorithm<MPILib::DelayedConnection>(rate));
+			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new MPILib::RateAlgorithm<MPILib::DelayedConnection>(rate, kernel_values));
 		}
 
 		if (std::string("RateAlgorithm") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {
@@ -400,8 +404,8 @@ void SimulationParserCPU< MPILib::DelayedConnection>::parseXMLAlgorithms(pugi::x
 			std::cout << "Found RateAlgorithm " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("rate")));
-
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new MPILib::RateAlgorithm<MPILib::DelayedConnection>(rate));
+			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new MPILib::RateAlgorithm<MPILib::DelayedConnection>(rate, kernel_values));
 		}
 	}
 
@@ -439,8 +443,8 @@ void SimulationParserCPU<double>::parseXMLAlgorithms(pugi::xml_document& doc,
 			std::cout << "Found RateFunctor (Using a RateAlgorithm) " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("expression")));
-
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<double>>(new MPILib::RateAlgorithm<double>(rate));
+			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<double>>(new MPILib::RateAlgorithm<double>(rate, kernel_values));
 		}
 
 		if (std::string("RateAlgorithm") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {
@@ -450,8 +454,8 @@ void SimulationParserCPU<double>::parseXMLAlgorithms(pugi::xml_document& doc,
 			std::cout << "Found RateAlgorithm " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("rate")));
-
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<double>>(new MPILib::RateAlgorithm<double>(rate));
+			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<double>>(new MPILib::RateAlgorithm<double>(rate, kernel_values));
 		}
 
 	}
@@ -515,7 +519,7 @@ void SimulationParserCPU<WeightType>::parseXmlFile() {
 	// For now, let's allow multiple nodes but only with the same variables and algorithms.
 
 	for (unsigned int node_num = 0; node_num < MiindTvbModelAbstract<WeightType, MPILib::utilities::CircularDistribution>::_num_nodes; node_num++) {
-		_current_node = node_num; 
+		_current_node = node_num;
 		//Nodes
 		for (pugi::xml_node node = doc.child("Simulation").child("Nodes").child("Node"); node; node = node.next_sibling("Node")) {
 			std::string node_name = interpretValueAsString(std::string(node.attribute("name").value())) + std::string("_") + std::to_string(node_num);

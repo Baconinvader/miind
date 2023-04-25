@@ -26,52 +26,67 @@
 
 namespace MPILib {
 
-template<class Weight>
-RateAlgorithm<Weight>::RateAlgorithm(Rate rate) :
+	template<class Weight>
+	RateAlgorithm<Weight>::RateAlgorithm(Rate rate, vector<double> kernel) :
 		AlgorithmInterface<Weight>(), _time_current(
-				std::numeric_limits<double>::max()), _rate(rate) {
-}
+			std::numeric_limits<double>::max()),
+		_rate(rate),
+		_vec_kernel(kernel) {
+	}
 
-template<class Weight>
-RateAlgorithm<Weight>::~RateAlgorithm() {
-}
+	template<class Weight>
+	RateAlgorithm<Weight>::RateAlgorithm(Rate rate) :
+		AlgorithmInterface<Weight>(), _time_current(
+			std::numeric_limits<double>::max()),
+		_rate(rate),
+		_vec_kernel({ 1.0 }) {
+	}
 
-template<class Weight>
-RateAlgorithm<Weight>* RateAlgorithm<Weight>::clone() const {
-	return new RateAlgorithm(*this);
-}
+	template<class Weight>
+	RateAlgorithm<Weight>::~RateAlgorithm() {
+	}
 
-template<class Weight>
-void RateAlgorithm<Weight>::configure(
+	template<class Weight>
+	RateAlgorithm<Weight>* RateAlgorithm<Weight>::clone() const {
+		return new RateAlgorithm(*this);
+	}
+
+	template<class Weight>
+	void RateAlgorithm<Weight>::configure(
 		const SimulationRunParameter& simParam) {
 
-	_time_current = simParam.getTBegin();
+		_time_current = simParam.getTBegin();
 
-}
+	}
 
-template<class Weight>
-void RateAlgorithm<Weight>::evolveNodeState(const std::vector<Rate>&,
+	template<class Weight>
+	void RateAlgorithm<Weight>::evolveNodeState(const std::vector<Rate>&,
 		const std::vector<Weight>&, Time time) {
-	_time_current = time;
-}
+		_time_current = time;
+	}
 
-template<class Weight>
-Time RateAlgorithm<Weight>::getCurrentTime() const {
-	return _time_current;
+	template<class Weight>
+	Time RateAlgorithm<Weight>::getCurrentTime() const {
+		return _time_current;
 
-}
+	}
 
-template<class Weight>
-Rate RateAlgorithm<Weight>::getCurrentRate() const {
-	return _rate;
-}
+	template<class Weight>
+	Rate RateAlgorithm<Weight>::getCurrentRate() const {
+		return _rate;
+	}
 
-template<class Weight>
-AlgorithmGrid RateAlgorithm<Weight>::getGrid(NodeId,  bool) const {
-	std::vector<double> vector_grid(RATE_STATE_DIMENSION, _rate);
-	std::vector<double> vector_interpretation(RATE_STATE_DIMENSION, 0);
-	return AlgorithmGrid(vector_grid, vector_interpretation);
-}
+	template<class Weight>
+	vector<double> RateAlgorithm<Weight>::getKernel() const {
+		return _vec_kernel;
+	}
+
+	template<class Weight>
+	AlgorithmGrid RateAlgorithm<Weight>::getGrid(NodeId, bool) const {
+		std::vector<double> vector_grid(RATE_STATE_DIMENSION, _rate);
+		std::vector<double> vector_interpretation(RATE_STATE_DIMENSION, 0);
+		return AlgorithmGrid(vector_grid, vector_interpretation);
+	}
 
 } /* namespace MPILib */
 

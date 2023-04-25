@@ -26,62 +26,69 @@
 
 
 namespace MPILib {
-/**
- * @brief An Algorithm with constant rate
- */
-template<class Weight>
-class RateAlgorithm: public AlgorithmInterface<Weight> {
-public:
-
 	/**
-	 * Constructor
-	 * @param rate the rate of the algorithm
+	 * @brief An Algorithm with constant rate
 	 */
-	RateAlgorithm(Rate rate);
+	template<class Weight>
+	class RateAlgorithm : public AlgorithmInterface<Weight> {
+	public:
 
-	virtual ~RateAlgorithm();
+		/**
+		 * Constructor
+		 * @param rate the rate of the algorithm
+		 */
+		RateAlgorithm(Rate rate);
+		RateAlgorithm(Rate rate, vector<double> kernel);
 
-	/**
-	 * Cloning operation, to provide each DynamicNode with its own
-	 * Algorithm instance. Clients use the naked pointer at their own risk.
-	 */
-	virtual RateAlgorithm* clone() const;
+		virtual ~RateAlgorithm();
 
-	/**
-	 * Configure the Algorithm
-	 * @param simParam
-	 */
-	virtual void configure(const SimulationRunParameter&);
+		/**
+		 * Cloning operation, to provide each DynamicNode with its own
+		 * Algorithm instance. Clients use the naked pointer at their own risk.
+		 */
+		virtual RateAlgorithm* clone() const;
 
-	/**
-	 * Evolve the node state
-	 * @param nodeVector Vector of the node States
-	 * @param weightVector Vector of the weights of the nodes
-	 * @param time Time point of the algorithm
-	 */
-	virtual void evolveNodeState(const std::vector<Rate>& nodeVector,
+		/**
+		 * Configure the Algorithm
+		 * @param simParam
+		 */
+		virtual void configure(const SimulationRunParameter&);
+
+		/**
+		 * Evolve the node state
+		 * @param nodeVector Vector of the node States
+		 * @param weightVector Vector of the weights of the nodes
+		 * @param time Time point of the algorithm
+		 */
+		virtual void evolveNodeState(const std::vector<Rate>& nodeVector,
 			const std::vector<Weight>& weightVector, Time time);
 
-	/**
-	 * The current timepoint
-	 * @return The current time point
-	 */
-	virtual Time getCurrentTime() const;
+		/**
+		 * The current timepoint
+		 * @return The current time point
+		 */
+		virtual Time getCurrentTime() const;
 
-	/**
-	 * The calculated rate of the node
-	 * @return The rate of the node
-	 */
-	virtual Rate getCurrentRate() const;
+		/**
+		 * The calculated rate of the node
+		 * @return The rate of the node
+		 */
+		virtual Rate getCurrentRate() const;
 
-	virtual AlgorithmGrid getGrid(NodeId, bool b_state = true) const;
+		/**
+		* The kernel of the node
+		* @return The kernel of the node
+		*/
+		virtual std::vector<double> getKernel() const;
 
-private:
+		virtual AlgorithmGrid getGrid(NodeId, bool b_state = true) const;
 
-	Time _time_current;
-	Rate _rate;
+	private:
 
-};
+		Time _time_current;
+		Rate _rate;
+		vector<double> _vec_kernel;
+	};
 
 } /* namespace MPILib */
 #endif /* MPILIB_ALGORITHMS_RATEALGORITHM_HPP_ */

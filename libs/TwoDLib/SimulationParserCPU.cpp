@@ -367,7 +367,8 @@ void SimulationParserCPU< MPILib::DelayedConnection>::parseXMLAlgorithms(pugi::x
 				matrix_files.push_back(interpretValueAsString(std::string(matrix_file.child_value())));
 			}
 
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new TwoDLib::MeshAlgorithm<MPILib::DelayedConnection, TwoDLib::MasterOdeint>(model_filename, matrix_files, time_step, tau_refractive, activity_mode));
+			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new TwoDLib::MeshAlgorithm<MPILib::DelayedConnection, TwoDLib::MasterOdeint>(model_filename, matrix_files, time_step, tau_refractive, activity_mode, 0, kernel_values));
 		}
 
 		if (std::string("OUAlgorithm") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {

@@ -35,7 +35,7 @@ namespace TwoDLib {
 
 		MasterOdeint
 		(
-			Ode2DSystemGroup&  sys,                                     //!< The systemgroup keeps track of the density and the mapping that is updated using evolution
+			Ode2DSystemGroup& sys,                                     //!< The systemgroup keeps track of the density and the mapping that is updated using evolution
 			const std::vector< vector<TransitionMatrix> >& vec_vec_mat, //!< TransitionMatrix matrix. First index labels the Mesh that covered by a vector of TransitionMatrix elements, second index labels the different TransitionMatrix objects operating on this mesh, which differ in the efficacy they represent
 			const MasterParameter& par                                  //!< Parmeter for configuring the numerical solver
 		);
@@ -44,11 +44,19 @@ namespace TwoDLib {
 
 		//! Communicate the firing rates to the sparse matrix implementation
 		void Apply
-			(
-				double                                   time_step,      //!< mesh time step
-				const std::vector<std::vector<double> >& rate_matrix,	 //!< rate matrix
-				const vector<MPILib::Index>&	         weight_order    //!< reference to the mapping from NodeId to weight order
-			);
+		(
+			double                                   time_step,      //!< mesh time step
+			const std::vector<std::vector<double> >& rate_matrix,	 //!< rate matrix
+			const vector<MPILib::Index>& weight_order    //!< reference to the mapping from NodeId to weight order
+		);
+
+		void Apply
+		(
+			double                                   time_step,      //!< mesh time step
+			const std::vector<std::vector<double> >& rate_matrix,	 //!< rate matrix
+			const vector<MPILib::Index>& weight_order,   //!< reference to the mapping from NodeId to weight order
+			const vector<vector<double>>& kernels //!< kernel used for each rate
+		);
 
 		//! Communicate the firing rates to the sparse matrix implementation for individual neurons
 		void ApplyFinitePoisson
@@ -67,16 +75,18 @@ namespace TwoDLib {
 		//! Efficacy associated with matrix matrix_index from Mesh mesh_index
 		double Efficacy
 		(
-				MPILib::Index mesh_index,	//!< Index labeling mesh
-				MPILib::Index matrix_index
-		) const {return _vec_vec_csr[mesh_index][matrix_index].Efficacy(); }
+			MPILib::Index mesh_index,	//!< Index labeling mesh
+			MPILib::Index matrix_index
+		) const {
+			return _vec_vec_csr[mesh_index][matrix_index].Efficacy();
+		}
 
 		//! Solution step
 		void operator()
-				(
-					const vector<double>&,
-					vector<double>&,
-					const double t = 0
+			(
+				const vector<double>&,
+				vector<double>&,
+				const double t = 0
 				);
 
 	private:
@@ -99,8 +109,9 @@ namespace TwoDLib {
 		vector<double>			_dydt;
 		double					_rate;
 
-		const std::vector<MPILib::Index>*              _p_vec_map;     // place holder for current mapping, needed in operator()
+		const std::vector<MPILib::Index>* _p_vec_map;     // place holder for current mapping, needed in operator()
 		const std::vector<std::vector<MPILib::Rate> >* _p_vec_rates;   // place holder for rate vector
+		const std::vector<std::vector<double> >* _p_vec_kernels;   // place holder for kernels
 
 	};
 }

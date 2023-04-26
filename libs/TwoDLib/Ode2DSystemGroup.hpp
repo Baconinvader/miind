@@ -67,17 +67,6 @@ namespace TwoDLib {
 			const std::vector<MPILib::Time>&
 		);
 
-		//TODO: add this for other versions of the constructor
-		Ode2DSystemGroup
-		(
-			const std::vector<Mesh>&, 					       //!< A series of Mesh in the Python convention. Most models require a reversal bin that is not part of the grid. In that case it must be inserted into the Mesh by calling Mesh::InsertStationary. It is legal not to define an extra reversal bin, and use one of the existing Mesh cells at such, but in that case Cell (0,0) will not exist.
-			const std::vector< std::vector<Redistribution> >&, //!< A series of mappings from strip end to reversal bin
-			const std::vector< std::vector<Redistribution> >&,  //!< A series of mappings from threshold to reset bin
-			const std::vector<MPILib::Time>&,
-			const std::vector<MPILib::Index> num_objects,
-			const std::vector<double> kernel
-		);
-
 		//! Constructor for a system group without refractive period. No queues for firing rates are created in the system group.
 		Ode2DSystemGroup
 		(
@@ -98,14 +87,6 @@ namespace TwoDLib {
 			const std::vector<MPILib::Index> num_objects
 		);
 
-		Ode2DSystemGroup
-		(
-
-			const std::vector<Mesh>&, 					       //!< A series of Mesh in the Python convention. Most models require a reversal bin that is not part of the grid. In that case it must be inserted into the Mesh by calling Mesh::InsertStationary. It is legal not to define an extra reversal bin, and use one of the existing Mesh cells at such, but in that case Cell (0,0) will not exist.
-			const std::vector< std::vector<Redistribution> >&, //!< A series of mappings from strip end to reversal bin
-			const std::vector< std::vector<Redistribution> >&,  //!< A series of mappings from threshold to reset bin
-			const std::vector<double> kernel
-		);
 
 
 		//! Place all initial density in a cell with coordinates (m,i,j)
@@ -420,7 +401,6 @@ namespace TwoDLib {
 		vector<MPILib::Potential>  	InitializeArea(const std::vector<Mesh>&) const;
 		vector<MPILib::Mass>        InitializeMass() const;
 		vector<vector<MPILib::Mass>> InitializeMasses(const unsigned int count) const;
-		vector<double> InitializeKernel(const std::vector<double> kernel) const;
 
 		std::vector< std::vector< std::vector<MPILib::Index> > > InitializeMap() const;
 		std::vector< MPILib::Index> InitializeLinearMap();
@@ -456,7 +436,8 @@ namespace TwoDLib {
 		vector<vector<MPILib::Index>>	_vec_vec_objects_to_index; // used for holding a history of finite objects
 		vector<vector<double>>          _vec_vec_objects_refract_times; // used for holding a history of object refractory times
 		vector<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
-		*/ctor<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
+		vector<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
+		*/
 
 		void updateVecObjectsToIndex() {
 			for (int i = 0; i < _vec_cells_to_objects.size(); i++) {

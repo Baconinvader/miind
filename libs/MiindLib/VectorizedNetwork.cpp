@@ -7,8 +7,10 @@ using namespace MiindLib;
 
 // check to make sure a given vector of kernel values is valid
 bool checkKernel(vector<double> kernel) {
+    std::cout << "checking kernel " << kernel.empty() << ", " << kernel.size() << std::endl;
     double kernel_sum = 0.0;
 
+    std::cout << "miind" << std::endl;
     if (kernel.empty()) {
         std::cout << "Warning: kernel has been declared using <kernel></kernel> but has not been specified. Specify kernel values using <value></value> XML." << std::endl;
         return false;
@@ -151,13 +153,7 @@ void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
     _num_objects.push_back(50000);
     _group = new TwoDLib::Ode2DSystemGroup(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _num_objects);
 #else
-    //since different nodes can have different kernels, and since in this case all computation is done on the GPU using CudaOde2DSystemAdapter,
-    //all that matters is the size of the kernel passed into _group
-    std::vector<double> kern;
-    for (int i = 0; i < largest_history_count; i++) {
-        kern.push_back(1.0 / (float)largest_history_count);
-    }
-    _group = new TwoDLib::Ode2DSystemGroup(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _num_objects, kern);
+    _group = new TwoDLib::Ode2DSystemGroup(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _num_objects);
 #endif
 
     for (MPILib::Index i = 0; i < _grid_meshes.size(); i++) {
@@ -748,6 +744,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display* display
     for (unsigned int i = 0; i < _mesh_connections.size(); i++) {
         _connection_out_group_mesh.push_back(_node_id_to_group_mesh[_mesh_connections[i]._out]);
         _connection_in.push_back(_mesh_connections[i]._in);
+        std::cout << "CONNECTION IN:" << _mesh_connections[i]._in << ", pushing back " << _node_id_to_group_mesh[_mesh_connections[i]._in] << std::endl;
 
         _csrs.push_back(TwoDLib::CSRMatrix(*(_mesh_connections[i]._transition), *(_group), _node_id_to_group_mesh[_mesh_connections[i]._out]));
         // _csrs contains all the grid transforms first (see initOde2DSystem)
@@ -880,6 +877,9 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
     for (unsigned int i = 0; i < rates.size(); i++)
         rates[i] *= _n_steps;
 
+
+    std::cout << "steps [1]" << _master_steps << std::endl;
+
     _csr_adapter->ClearDerivative();
     for (MPILib::Index i_part = 0; i_part < _master_steps; i_part++) {
 
@@ -889,6 +889,9 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
     _csr_adapter->AddDerivative();
 
     _csr_adapter->ShiftHistories();
+
+    //TODO move this?
+    _group_adapter->ShiftFiniteHistories();
 
 
     _csr_adapter->CalculateMeshGridDerivativeWithEfficacyFinite(_connection_out_group_mesh, rates, _effs, _grid_cell_widths, _grid_cell_offsets, _vec_mesh[0].TimeStep(), _vec_vec_kernel_values);
@@ -923,6 +926,9 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
         _group_adapter->updateGroupMass();
         _group_adapter->updateFiniteObjects();
 
+        if (_group->_vec_kernel.size() > 1) {
+            _group->ShiftFiniteObjectHistories();
+        }
 
     }
 

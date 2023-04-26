@@ -87,7 +87,7 @@ namespace TwoDLib {
 		* The kernel of the node
 		* @return The kernel of the node
 		*/
-		virtual std::vector<double> getKernel() const { return _sys._vec_kernel; }
+		virtual std::vector<double> getKernel() const { return _vec_kernel; }
 
 		/**
 		 * Stores the algorithm state in a Algorithm Grid
@@ -160,6 +160,8 @@ namespace TwoDLib {
 		 */
 		void InitializeDensity(MPILib::Index i, MPILib::Index j) { _sys.Initialize(0, i, j); }
 
+		vector<double> InitializeKernel(const std::vector<double> kernel_values) const;
+
 		const Ode2DSystemGroup& Sys() const { return _sys; }
 
 
@@ -193,7 +195,7 @@ namespace TwoDLib {
 		MPILib::Time _t_cur;
 
 		std::vector<MPILib::Index> _vec_num_objects;
-
+		std::vector<double> _vec_kernel;
 		std::vector<MPILib::Time>    _vec_tau_refractive;
 
 		// parsing auxilliaries

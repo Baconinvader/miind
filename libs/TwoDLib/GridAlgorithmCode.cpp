@@ -34,7 +34,8 @@ namespace TwoDLib {
 		_vec_tau_refractive(std::vector<MPILib::Time>({ tau_refractive })),
 		_dt(_vec_mesh[0].TimeStep()),
 		_vec_num_objects(CreateNumObjects(num_objects)),
-		_sys(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects, kernel),
+		_sys(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects),
+		_vec_kernel(InitializeKernel(kernel)),
 		_n_evolve(0),
 		_n_steps(0),
 		_sysfunction(rate_method == "AvgV" ? &TwoDLib::Ode2DSystemGroup::AvgV : &TwoDLib::Ode2DSystemGroup::F),
@@ -62,7 +63,8 @@ namespace TwoDLib {
 		_dt(_vec_mesh[0].TimeStep()),
 		_vec_tau_refractive(rhs._vec_tau_refractive),
 		_vec_num_objects(rhs._vec_num_objects),
-		_sys(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, rhs._vec_num_objects, rhs._sys._vec_kernel),
+		_sys(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, rhs._vec_num_objects),
+		_vec_kernel(rhs._vec_kernel),
 		_n_evolve(0),
 		_n_steps(0),
 		_sysfunction(rhs._sysfunction),
@@ -75,6 +77,30 @@ namespace TwoDLib {
 		vector<Coordinates> coords = _vec_mesh[0].findPointInMeshSlow(Point(_start_v, _start_w));
 
 		_sys.Initialize(0, coords[0][0], coords[0][1]);
+
+	}
+
+	vector<double> GridAlgorithm::InitializeKernel(const std::vector<double> kernel_values) const
+	{
+		vector<double> kernel;
+
+		if (kernel_values.size() == 0) {
+			//default
+			kernel = { 1.0 };
+		}
+		else {
+			double kernel_sum = 0.;
+			for (int h = 0; h < kernel_values.size(); h++) {
+				kernel.push_back(kernel_values.at(h));
+				kernel_sum += kernel_values.at(h);
+			}
+
+			if (kernel_sum != 1) {
+				std::cout << "Mesh kernel doesn't sum to 1 (sums to" << kernel_sum << "). This will lead to an incorrect probability mass." << std::endl;
+			}
+		}
+
+		return kernel;
 
 	}
 
@@ -274,7 +300,6 @@ namespace TwoDLib {
 		}
 
 		if (_sys._vec_masses.size() < longest_kernel_size) {
-
 			// at least one incoming activity has a kernel with size greater than the amount of histories stored in _sys
 			// so increase size of _sys
 			vector<double> back_mass;
@@ -289,7 +314,6 @@ namespace TwoDLib {
 				_sys._vec_masses.push_back(back_mass);
 			}
 
-			
 		}
 
 		if (_sys._vec_masses.size() > 0) {

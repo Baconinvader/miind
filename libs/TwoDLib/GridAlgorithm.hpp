@@ -58,7 +58,7 @@ namespace TwoDLib {
 		* The kernel of the node
 		* @return The kernel of the node
 		*/
-		virtual std::vector<double> getKernel() const { return _sys._vec_kernel; }
+		virtual std::vector<double> getKernel() const { return _vec_kernel; }
 
 		virtual void assignNodeId(MPILib::NodeId);
 
@@ -84,6 +84,8 @@ namespace TwoDLib {
 
 		void InitializeDensity(MPILib::Index i, MPILib::Index j) { _sys.Initialize(0, i, j); }
 
+		vector<double> InitializeKernel(const std::vector<double> kernel_values) const;
+
 		const Ode2DSystemGroup& Sys() const { return _sys; }
 
 		std::vector<std::vector<TwoDLib::Redistribution>> ReversalMap() const { return _vec_vec_rev; }
@@ -96,6 +98,7 @@ namespace TwoDLib {
 		const std::string _rate_method;
 
 		std::vector<MPILib::Index> _vec_num_objects;
+		std::vector<double> _vec_kernel;
 
 		MPILib::Rate _rate;
 		MPILib::Time _t_cur;

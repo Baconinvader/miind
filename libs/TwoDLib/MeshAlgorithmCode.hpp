@@ -137,7 +137,8 @@ namespace TwoDLib {
 		_vec_tau_refractive(std::vector<MPILib::Time>({ tau_refractive })),
 		_vec_map(0),
 		_dt(_mesh_vec[0].TimeStep()),
-		_sys(_mesh_vec, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects, kernel),
+		_sys(_mesh_vec, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects),
+		_vec_kernel(InitializeKernel(kernel)),
 		_vec_num_objects(CreateNumObjects(num_objects)),
 		_n_evolve(0),
 		_n_steps(0),
@@ -170,7 +171,8 @@ namespace TwoDLib {
 		_vec_num_objects(rhs._vec_num_objects),
 		_vec_map(0),
 		_dt(_mesh_vec[0].TimeStep()),
-		_sys(_mesh_vec, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects, rhs._sys._vec_kernel),
+		_sys(_mesh_vec, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects),
+		_vec_kernel(rhs._vec_kernel),
 		_n_evolve(0),
 		_n_steps(0),
 		_sysfunction(rhs._sysfunction)
@@ -196,6 +198,31 @@ namespace TwoDLib {
 			vec_mat.push_back(TransitionMatrix(name));
 
 		return vec_mat;
+	}
+
+	template <class WeightValue, class Solver>
+	vector<double> MeshAlgorithm<WeightValue, Solver>::InitializeKernel(const std::vector<double> kernel_values) const
+	{
+		vector<double> kernel;
+
+		if (kernel_values.size() == 0) {
+			//default
+			kernel = { 1.0 };
+		}
+		else {
+			double kernel_sum = 0.;
+			for (int h = 0; h < kernel_values.size(); h++) {
+				kernel.push_back(kernel_values.at(h));
+				kernel_sum += kernel_values.at(h);
+			}
+
+			if (kernel_sum != 1) {
+				std::cout << "Mesh kernel doesn't sum to 1 (sums to" << kernel_sum << "). This will lead to an incorrect probability mass." << std::endl;
+			}
+		}
+
+		return kernel;
+
 	}
 
 	template <class WeightValue, class Solver>
@@ -334,6 +361,8 @@ namespace TwoDLib {
 		const std::vector<std::vector<double>>& kernelVector
 	)
 	{
+		//std::cout << "MeshAlgorithm evolveNodeState 1" << std::endl;
+
 	  // The network time step must be an integer multiple of the network time step; in principle
 	  // we would expect this multiple to be one, but perhaps there are reasons to allow a population
 	  // have a finer time resolution than others, so we allow larger multiples but write a warning in the log file.
@@ -347,6 +376,9 @@ namespace TwoDLib {
 				throw TwoDLibException("Network time step is smaller than this grid's time step.");
 			}
 			if (fabs(_n_steps - n) > 1e-6) {
+				std::cout << "mesh time: " << _dt << std::endl;
+				std::cout << "net time: " << time << std::endl;
+				std::cout << "_n_steps: " << _n_steps << std::endl;
 				throw TwoDLibException("Mismatch of mesh time step and network time step. Network time step should be a multiple (mostly one) of network time step");
 			}
 			if (_n_steps > 1)
@@ -356,6 +388,7 @@ namespace TwoDLib {
 		}
 
 		// mass rotation
+		//std::cout << "MeshAlgorithm evolveNodeState 2" << std::endl;
 		for (MPILib::Index i = 0; i < _n_steps; i++) {
 			_sys.Evolve();
 			_sys.RemapReversal();
@@ -377,8 +410,11 @@ namespace TwoDLib {
 			if (kern.size() > longest_kernel_size)
 				longest_kernel_size = kern.size();
 		}
+		std::cout << "longest kernel " << longest_kernel_size << std::endl;
 
 		if (_sys._vec_masses.size() < longest_kernel_size) {
+			std::cout << "changing _sys vec masses size from " << _sys._vec_masses.size();
+
 			// at least one incoming activity has a kernel with size greater than the amount of histories stored in _sys
 			// so increase size of _sys
 			vector<double> back_mass;
@@ -392,6 +428,8 @@ namespace TwoDLib {
 			while (_sys._vec_masses.size() < longest_kernel_size) {
 				_sys._vec_masses.push_back(back_mass);
 			}
+
+			std::cout << " to " << _sys._vec_masses.size() << std::endl;
 		}
 
 		if (_sys._vec_masses.size() > 0) {
@@ -465,6 +503,14 @@ namespace TwoDLib {
 			_vec_vec_delay_queues[0][i].updateQueue(nodeVector[i] * weightVector[i]._number_of_connections);
 		}
 	}
+
+	/*template <class WeightValue, class Solver>
+	std::vector<double> MeshAlgorithm<WeightValue, Solver>::getKernel() const
+	{
+		return _sys._vec_kernel;
+	}*/
+
+
 }
 
 #endif // include guard

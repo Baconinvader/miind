@@ -94,7 +94,6 @@ std::vector<Ode2DSystemGroup::ObjectReversal> Ode2DSystemGroup::InitializeObject
 	return vec_ret;
 }
 
-
 Ode2DSystemGroup::Ode2DSystemGroup
 (
 	const std::vector<Mesh>& mesh_list,
@@ -102,16 +101,6 @@ Ode2DSystemGroup::Ode2DSystemGroup
 	const std::vector<std::vector<Redistribution> >& vec_reset,
 	const std::vector<MPILib::Time>& vec_tau_refractive,
 	const std::vector<MPILib::Index> num_objects
-) : Ode2DSystemGroup(mesh_list, vec_reversal, vec_reset, vec_tau_refractive, num_objects, std::vector<double>{1.0}) { } //TODO improve constructors?
-
-Ode2DSystemGroup::Ode2DSystemGroup
-(
-	const std::vector<Mesh>& mesh_list,
-	const std::vector<std::vector<Redistribution> >& vec_reversal,
-	const std::vector<std::vector<Redistribution> >& vec_reset,
-	const std::vector<MPILib::Time>& vec_tau_refractive,
-	const std::vector<MPILib::Index> num_objects,
-	const std::vector<double> kernel
 ) :
 	_mesh_list(mesh_list),
 	_vec_mesh_offset(MeshOffset(mesh_list)),
@@ -120,8 +109,7 @@ Ode2DSystemGroup::Ode2DSystemGroup
 	_vec_vs(MeshVs(mesh_list)),
 	_vec_tau_refractive(vec_tau_refractive),
 	_vec_mass(InitializeMass()),
-	_vec_kernel(InitializeKernel(kernel)),
-	_vec_masses(InitializeMasses(kernel.size())),
+	_vec_masses(InitializeMasses(1)),
 	_vec_area(InitializeArea(mesh_list)),
 	_t(0),
 	_fs(std::vector<MPILib::Rate>(mesh_list.size(), 0.0)),
@@ -196,16 +184,6 @@ Ode2DSystemGroup::Ode2DSystemGroup
 
 ) : Ode2DSystemGroup(mesh_list, vec_reversal, vec_reset, std::vector<MPILib::Time>(mesh_list.size(), 0.0), num_objects) {}
 
-Ode2DSystemGroup::Ode2DSystemGroup
-(
-	const std::vector<Mesh>& mesh_list,
-	const std::vector<std::vector<Redistribution> >& vec_reversal,
-	const std::vector<std::vector<Redistribution> >& vec_reset,
-	const std::vector<double> kernel
-
-) : Ode2DSystemGroup(mesh_list, vec_reversal, vec_reset, std::vector<MPILib::Time>(mesh_list.size(), 0.0), std::vector<MPILib::Index>(mesh_list.size()), kernel) {}
-//Ode2DSystemGroup(mesh_list, vec_reversal, vec_reset, std::vector<MPILib::Time>(mesh_list.size(), 0.0), 0, kernel)
-
 std::vector<MPILib::Number> Ode2DSystemGroup::MeshOffset(const std::vector<Mesh>& l) const
 {
 	std::vector<MPILib::Number> vec_ret{ 0 }; // first offset is 0
@@ -278,29 +256,7 @@ vector<MPILib::Potential> Ode2DSystemGroup::InitializeMass() const
 }
 
 
-vector<double> Ode2DSystemGroup::InitializeKernel(const std::vector<double> kernel_values) const //TODO better input name
-{
-	vector<double> kernel;
 
-	if (kernel_values.size() == 0) {
-		//default
-		kernel = { 1.0 };
-	}
-	else {
-		double kernel_sum = 0.;
-		for (int h = 0; h < kernel_values.size(); h++) {
-			kernel.push_back(kernel_values.at(h));
-			kernel_sum += kernel_values.at(h);
-		}
-
-		if (kernel_sum != 1) {
-			std::cout << "Mesh kernel doesn't sum to 1 (sums to" << kernel_sum << "). This will lead to an incorrect probability mass." << std::endl;
-		}
-	}
-
-	return kernel;
-
-}
 
 vector<vector<MPILib::Potential>> Ode2DSystemGroup::InitializeMasses(const unsigned int count) const
 {

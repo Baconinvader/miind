@@ -6,6 +6,7 @@
 
 typedef unsigned int inttype;
 typedef float fptype;
+typedef double dbltype;
 
 __global__ void CudaCalculateDerivative(inttype N, fptype rate, fptype* derivative, fptype* mass, fptype* val, inttype* ia, inttype* ja, inttype* map, inttype offset);
 __global__ void CudaSingleTransformStep(inttype N, fptype* derivative, fptype* mass, fptype* val, inttype* ia, inttype* ja, inttype* map, inttype offset);
@@ -28,7 +29,9 @@ __global__ void countSpikesAndClear(inttype N, inttype finite_offset, inttype* s
 __global__ void evolveMap(inttype N, inttype offset, inttype* map, inttype* unmap, inttype* cumulatives, inttype* lengths, inttype _t);
 __global__ void initCurand(curandState* state, unsigned long seed);
 __global__ void generatePoissonSpikes(inttype N, inttype offset, fptype rate, fptype timestep, inttype* spike_counts, curandState* state);
+
 __global__ void CudaUpdateFiniteObjects(inttype N, inttype finite_offset, inttype* spike_counts, inttype* objects, fptype* refract_times, inttype* refract_inds, fptype* val, inttype* ia, inttype* ja, inttype* map, inttype* unmap, inttype offset, curandState* state);
+
 __global__ void CudaReversalFiniteObjects(inttype N, inttype offset, inttype* objects, inttype reversal_N, unsigned int* rev_from, unsigned int* rev_to, inttype* map);
 __global__ void CudaResetFiniteObjects(inttype N, inttype offset, inttype* objects, fptype* refract_times, inttype* refract_inds, fptype refractory_time, inttype reset_N, unsigned int* rev_from, inttype* unmap, inttype* spiked);
 __global__ void CudaCheckRefractingFiniteObjects(inttype N, inttype finite_offset, inttype* objects, fptype* refract_times, inttype* refract_inds, fptype timestep, inttype reset_N, unsigned int* rev_from, unsigned int* rev_to, fptype* rev_alpha, curandState* state, inttype* map, inttype* unmap);
@@ -59,4 +62,6 @@ __global__ void CudaCalculateGridEfficacies(inttype N, fptype efficacy, fptype g
 __global__ void CudaCalculateGridCellEfficacies(inttype N, fptype* cell_vals, fptype grid_cell_width, inttype grid_offset_width, fptype* stays, fptype* goes, int* offset1s, int* offset2s, inttype vs_offset);
 __global__ void CudaCalculateGridDerivativeCsr(inttype N, fptype rate, fptype* derivative, fptype* mass, fptype* val, inttype* ia, inttype* ja, inttype offset);
 __global__ void CudaCalculateGridDerivativeCsrFinite(inttype N, inttype finite_offset, inttype* spike_counts, inttype* objects, fptype* refract_times, inttype* refract_inds, fptype* val, inttype* ia, inttype* ja, inttype grid_cell_offset, curandState* state);
+
+__global__ void CudaSumMass(inttype N, fptype* mass, fptype* total);
 #endif

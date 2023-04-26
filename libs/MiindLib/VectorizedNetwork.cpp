@@ -5,6 +5,34 @@
 
 using namespace MiindLib;
 
+// check to make sure a given vector of kernel values is valid
+bool checkKernel(vector<double> kernel) {
+    double kernel_sum = 0.0;
+
+    if (kernel.empty()) {
+        std::cout << "Warning: kernel has been declared using <kernel></kernel> but has not been specified. Specify kernel values using <value></value> XML." << std::endl;
+        return false;
+    }
+
+    for (double value : kernel) {
+        kernel_sum += value;
+    }
+
+
+    if (abs(kernel_sum - 1.0) > std::numeric_limits<double>::epsilon()) {
+        if (kernel_sum > 1.0) {
+            std::cout << "Warning: kernel weights sum to " << kernel_sum << " instead of 1.0, which will likely lead to errors" << std::endl;
+        }
+        else {
+            std::cout << "Warning: kernel weights sum to " << kernel_sum << " instead of 1.0, which will likely lead to errors" << std::endl;
+        }
+        return false;
+    }
+    else {
+        return true;
+    }
+}
+
 VectorizedNetwork::VectorizedNetwork(MPILib::Time time_step) :
     _num_nodes(0),
     _n_steps(10),
@@ -13,7 +41,8 @@ VectorizedNetwork::VectorizedNetwork(MPILib::Time time_step) :
 }
 
 void VectorizedNetwork::addGridNode(TwoDLib::Mesh mesh, TwoDLib::TransitionMatrix tmat, double start_v, double start_w, double start_u, double start_x,
-    std::vector<TwoDLib::Redistribution> vec_rev, std::vector<TwoDLib::Redistribution> vec_res, double tau_refractive, unsigned int finite_size) {
+    std::vector<TwoDLib::Redistribution> vec_rev, std::vector<TwoDLib::Redistribution> vec_res, double tau_refractive, unsigned int finite_size, std::vector<double> vec_kernel_values) {
+
 
     _num_nodes++;
     _grid_node_ids.push_back(_num_nodes - 1);
@@ -28,11 +57,17 @@ void VectorizedNetwork::addGridNode(TwoDLib::Mesh mesh, TwoDLib::TransitionMatri
     _start_us.push_back(start_u);
     _start_xs.push_back(start_x);
 
+    //TODO: this should only give a warn
+    //if (checkKernel(vec_kernel_values)) {
+    _vec_vec_kernel_values.push_back(vec_kernel_values);
+    //}
+
     _num_grid_objects.push_back(finite_size);
+
 }
 
 void VectorizedNetwork::addMeshNode(TwoDLib::Mesh mesh,
-    std::vector<TwoDLib::Redistribution> vec_rev, std::vector<TwoDLib::Redistribution> vec_res, double tau_refractive, unsigned int finite_size) {
+    std::vector<TwoDLib::Redistribution> vec_rev, std::vector<TwoDLib::Redistribution> vec_res, double tau_refractive, unsigned int finite_size, std::vector<double> vec_kernel_values) {
 
     _num_nodes++;
     _mesh_node_ids.push_back(_num_nodes - 1);
@@ -41,20 +76,35 @@ void VectorizedNetwork::addMeshNode(TwoDLib::Mesh mesh,
     _mesh_vec_vec_res.push_back(vec_res);
     _mesh_vec_tau_refractive.push_back(tau_refractive);
     _num_mesh_objects.push_back(finite_size);
+
+    //TODO: this should only give a warn
+    //if ( checkKernel(vec_kernel_values) ) {
+    _vec_vec_kernel_values.push_back(vec_kernel_values);
+    //}
+
 }
 
-void VectorizedNetwork::addRateNode(function_pointer functor) {
+void VectorizedNetwork::addRateNode(function_pointer functor, std::vector<double> vec_kernel_values) {
     _num_nodes++;
     _rate_functions.push_back(function_association(_num_nodes - 1, functor));
+
+    //TODO: this should only give a warn
+    //if ( checkKernel(vec_kernel_values) ) {
+    _vec_vec_kernel_values.push_back(vec_kernel_values);
+    //}
 }
 
-void VectorizedNetwork::addRateNode(rate_functor functor) {
+void VectorizedNetwork::addRateNode(rate_functor functor, std::vector<double> vec_kernel_values) {
     _num_nodes++;
     _rate_functors[_num_nodes - 1] = functor;
+
+    //TODO: this should only give a warn
+    //if ( checkKernel(vec_kernel_values) ) {
+    _vec_vec_kernel_values.push_back(vec_kernel_values);
+    //}
 }
 
 void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
-
     int mesh_count = 0;
     for (int g = 0; g < _grid_node_ids.size(); g++) {
         _node_id_to_group_mesh.insert(std::pair<MPILib::NodeId, MPILib::Index>(_grid_node_ids[g], mesh_count));
@@ -80,6 +130,20 @@ void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
         _num_objects.push_back(_num_mesh_objects[m]);
     }
 
+    // Figure out mass history count
+    //TODO make this better?
+    unsigned int largest_history_count = 1;
+    //default kernel
+    if (_vec_vec_kernel_values.empty()) {
+        _vec_vec_kernel_values.push_back({ 1.0 });
+    }
+
+    for (std::vector<double> vec_kernel : _vec_vec_kernel_values) {
+        if (vec_kernel.size() > largest_history_count) {
+            largest_history_count = vec_kernel.size();
+        }
+    }
+
 #ifdef IZHIKEVICH_TEST
     _network_time_step = 0.0001;
     _display_nodes.clear();
@@ -87,7 +151,13 @@ void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
     _num_objects.push_back(50000);
     _group = new TwoDLib::Ode2DSystemGroup(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _num_objects);
 #else
-    _group = new TwoDLib::Ode2DSystemGroup(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _num_objects);
+    //since different nodes can have different kernels, and since in this case all computation is done on the GPU using CudaOde2DSystemAdapter,
+    //all that matters is the size of the kernel passed into _group
+    std::vector<double> kern;
+    for (int i = 0; i < largest_history_count; i++) {
+        kern.push_back(1.0 / (float)largest_history_count);
+    }
+    _group = new TwoDLib::Ode2DSystemGroup(_vec_mesh, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _num_objects, kern);
 #endif
 
     for (MPILib::Index i = 0; i < _grid_meshes.size(); i++) {
@@ -112,7 +182,9 @@ void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
     _n_steps = par._N_steps;
     std::cout << "Using master solver n_steps = " << _master_steps << "\n";
 
-    _group_adapter = new CudaTwoDLib::CudaOde2DSystemAdapter(*(_group), _network_time_step);
+
+
+    _group_adapter = new CudaTwoDLib::CudaOde2DSystemAdapter(*(_group), _network_time_step, 0, _vec_vec_kernel_values);
 }
 
 void VectorizedNetwork::reportNodeActivities(MPILib::Time sim_time) {
@@ -276,7 +348,7 @@ TwoDLib::TransitionMatrix VectorizedNetwork::calculateProportionsNDEfficacyForCs
     unsigned int stride = std::pow(2, num_dimensions);
 
     std::vector<TwoDLib::TransitionMatrix::TransferLine> lines;
-    
+
     for (int c = 0; c < total_num_cells; c++) {
         TwoDLib::TransitionMatrix::TransferLine l;
         l._from = mesh.getStripCellCoordsOfIndex(c);
@@ -286,10 +358,10 @@ TwoDLib::TransitionMatrix VectorizedNetwork::calculateProportionsNDEfficacyForCs
 
         generateResetRelativeNdProportions(stride_vals, stride_offs, cell_vals[c], cell_widths, dimension_offsets, 0, 1.0, num_dimensions - 1);
 
-        std::map<unsigned int,  double> fracs;
+        std::map<unsigned int, double> fracs;
         for (int k = 0; k < stride; k++) {
             unsigned int index = modulo(c + stride_offs[k], total_num_cells);
-            
+
             if (stride_vals[k] > 0) {
                 if (fracs.count(index) == 0)
                     fracs[index] = stride_vals[k];
@@ -305,7 +377,7 @@ TwoDLib::TransitionMatrix VectorizedNetwork::calculateProportionsNDEfficacyForCs
             }
             else {
                 r._to = mesh.getStripCellCoordsOfIndex(x.first);
-            }  
+            }
             r._fraction = x.second;
             l._vec_to_line.push_back(r);
         }
@@ -342,7 +414,7 @@ void VectorizedNetwork::calculateProportionsNDEfficacyWithValues(std::vector<dou
     }
 
     if (failed_cells > 0)
-        std::cout << "Warning: Some calculated cell transitions (" << failed_cells << ") had the same offset which may lead to mass loss.\n" ;
+        std::cout << "Warning: Some calculated cell transitions (" << failed_cells << ") had the same offset which may lead to mass loss.\n";
 
     grid_cell_efficacies.push_back(cell_props);
     grid_cell_offsets.push_back(cell_offsets);
@@ -378,7 +450,7 @@ void VectorizedNetwork::calculateProportionsNDEfficacyWithValuesFinite(std::vect
     grid_cell_strides.push_back(stride);
 }
 
-void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * display) {
+void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display* display) {
 
     for (unsigned int i = 0; i < _display_nodes.size(); i++) {
         display->addOdeSystem(_display_nodes[i], _group, _vec_mesh[_node_id_to_group_mesh[_display_nodes[i]]].getGridNumDimensions() >= 3, _node_id_to_group_mesh[_display_nodes[i]]);
@@ -397,6 +469,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
     for (unsigned int i = 0; i < _grid_connections.size(); i++) {
         // for each connection, which of group's meshes is being affected
         _connection_out_group_mesh.push_back(_node_id_to_group_mesh[_grid_connections[i]._out]);
+        _connection_in.push_back(_mesh_connections[i]._in);
         _effs.push_back(std::stod(_grid_connections[i]._params["efficacy"]));
 
         int total_num_cells = 1;
@@ -434,7 +507,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
                 eff_vector[num_dimensions - 1] = std::stod(_grid_connections[i]._params["eff_v"]);
             if (_grid_connections[i]._params.find("eff_w") != _grid_connections[i]._params.end())
                 eff_vector[num_dimensions - 2] = std::stod(_grid_connections[i]._params["eff_w"]);
-            if (_grid_connections[i]._params.find("eff_u") != _grid_connections[i]._params.end() && num_dimensions>2)
+            if (_grid_connections[i]._params.find("eff_u") != _grid_connections[i]._params.end() && num_dimensions > 2)
                 eff_vector[num_dimensions - 3] = std::stod(_grid_connections[i]._params["eff_u"]);
 
             // Calculate the v for each cell in the grid
@@ -482,7 +555,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
                 cell_dim_widths, total_num_cells, test_cell_vals, cell_dim_offs));
 
             csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));
-            
+
         }
         else if (_grid_connections[i]._params["type"] == std::string("eff_vector_u")) {
             std::vector<std::vector<fptype>> test_cell_vals(total_num_cells);
@@ -503,14 +576,14 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
                 for (int d = 0; d < num_dimensions; d++) {
                     dirs[d] = eff_vector[d] * u;
                 }
-                
+
                 test_cell_vals[c] = dirs;
             }
 
             mats.push_back(calculateProportionsNDEfficacyForCsr(_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]],
                 cell_dim_widths, total_num_cells, test_cell_vals, cell_dim_offs));
 
-            csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));     
+            csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));
         }
         else if (_grid_connections[i]._params["type"] == std::string("eff_vector")) {
             std::vector<std::vector<fptype>> test_cell_vals(total_num_cells);
@@ -532,14 +605,14 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
 
             csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));
         }
-        else if (_grid_connections[i]._params["type"] == std::string("eff_times_v")){
+        else if (_grid_connections[i]._params["type"] == std::string("eff_times_v")) {
             std::vector<std::vector<fptype>> test_cell_vals(total_num_cells);
             // Calculate the v for each cell in the grid
             for (int c = 0; c < total_num_cells; c++) {
-                std::vector<fptype> eff_vector(num_dimensions,0.0);
+                std::vector<fptype> eff_vector(num_dimensions, 0.0);
 
                 double e = std::stod(_grid_connections[i]._params["efficacy"]) *
-                    ((_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getCoordsOfIndex(c)[_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridNumDimensions()-1] 
+                    ((_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getCoordsOfIndex(c)[_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridNumDimensions() - 1]
                         * _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridCellWidthByDimension(_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridNumDimensions() - 1))
                         + _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridBaseByDimension(_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridNumDimensions() - 1));
 
@@ -551,7 +624,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
                 cell_dim_widths, total_num_cells, test_cell_vals, cell_dim_offs));
 
             csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));
-        } 
+        }
         else if (_grid_connections[i]._params["type"] == std::string("eff_times_w")) {
             std::vector<std::vector<fptype>> test_cell_vals(total_num_cells);
 
@@ -572,7 +645,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
                 cell_dim_widths, total_num_cells, test_cell_vals, cell_dim_offs));
 
             csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));
-        } 
+        }
         else if (_grid_connections[i]._params["type"] == std::string("eff_times_u")) {
             std::vector<std::vector<fptype>> test_cell_vals(total_num_cells);
 
@@ -596,42 +669,42 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
             csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));
         }
         else if (_grid_connections[i]._params["type"] == std::string("tsodyks")) { //specific connection type designed for the tsodyks markram 4D model
-        
-        std::vector<std::vector<fptype>> test_cell_vals(total_num_cells);
 
-        double U_se = 0.55; //55
-        double A_se = 5.3; //530
+            std::vector<std::vector<fptype>> test_cell_vals(total_num_cells);
 
-        if (_grid_connections[i]._params.find("U_se") != _grid_connections[i]._params.end())
-            U_se = std::stod(_grid_connections[i]._params["U_se"]);
+            double U_se = 0.55; //55
+            double A_se = 5.3; //530
 
-        if (_grid_connections[i]._params.find("A_se") != _grid_connections[i]._params.end())
-            A_se = std::stod(_grid_connections[i]._params["A_se"]);
+            if (_grid_connections[i]._params.find("U_se") != _grid_connections[i]._params.end())
+                U_se = std::stod(_grid_connections[i]._params["U_se"]);
 
-        for (int c = 0; c < total_num_cells; c++) {
+            if (_grid_connections[i]._params.find("A_se") != _grid_connections[i]._params.end())
+                A_se = std::stod(_grid_connections[i]._params["A_se"]);
 
-            std::vector<fptype> eff_vector(num_dimensions);
+            for (int c = 0; c < total_num_cells; c++) {
 
-            double R = ((_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getCoordsOfIndex(c)[0]
-                * _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridCellWidthByDimension(0))
-                + _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridBaseByDimension(0));
+                std::vector<fptype> eff_vector(num_dimensions);
 
-            double E = ((_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getCoordsOfIndex(c)[1]
-                * _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridCellWidthByDimension(1))
-                + _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridBaseByDimension(1));
+                double R = ((_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getCoordsOfIndex(c)[0]
+                    * _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridCellWidthByDimension(0))
+                    + _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridBaseByDimension(0));
 
-            eff_vector[0] = -U_se * R;
-            eff_vector[1] =  U_se * R;
-            eff_vector[2] =  U_se * A_se * E;
-            eff_vector[3] =  0.0;
+                double E = ((_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getCoordsOfIndex(c)[1]
+                    * _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridCellWidthByDimension(1))
+                    + _grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]].getGridBaseByDimension(1));
 
-            test_cell_vals[c] = eff_vector;
-        }
+                eff_vector[0] = -U_se * R;
+                eff_vector[1] = U_se * R;
+                eff_vector[2] = U_se * A_se * E;
+                eff_vector[3] = 0.0;
 
-        mats.push_back(calculateProportionsNDEfficacyForCsr(_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]],
-            cell_dim_widths, total_num_cells, test_cell_vals, cell_dim_offs));
+                test_cell_vals[c] = eff_vector;
+            }
 
-        csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));
+            mats.push_back(calculateProportionsNDEfficacyForCsr(_grid_vec_mesh[_node_id_to_group_mesh[_grid_connections[i]._out]],
+                cell_dim_widths, total_num_cells, test_cell_vals, cell_dim_offs));
+
+            csrs.push_back(TwoDLib::CSRMatrix(mats.back(), *_group, _node_id_to_group_mesh[_grid_connections[i]._out]));
         }
         else {
             std::vector<std::vector<fptype>> test_cell_vals(total_num_cells);
@@ -674,6 +747,8 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
 
     for (unsigned int i = 0; i < _mesh_connections.size(); i++) {
         _connection_out_group_mesh.push_back(_node_id_to_group_mesh[_mesh_connections[i]._out]);
+        _connection_in.push_back(_mesh_connections[i]._in);
+
         _csrs.push_back(TwoDLib::CSRMatrix(*(_mesh_connections[i]._transition), *(_group), _node_id_to_group_mesh[_mesh_connections[i]._out]));
         // _csrs contains all the grid transforms first (see initOde2DSystem)
         // now we're adding all the mesh transition matrices so set the correct index value
@@ -703,6 +778,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
     for (unsigned int i = 0; i < _mesh_custom_connections.size(); i++) {
         // for each connection, which of group's meshes is being affected
         _connection_out_group_mesh.push_back(_node_id_to_group_mesh[_mesh_custom_connections[i]._out]);
+        _connection_in.push_back(_mesh_connections[i]._in);
 
         TwoDLib::TransitionMatrix mat = *(_mesh_custom_connections[i]._transition);
         auto id = _node_id_to_group_mesh[_mesh_custom_connections[i]._out];
@@ -734,7 +810,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
             }
     }
 
-    _csr_adapter = new CudaTwoDLib::CSRAdapter(*_group_adapter, _csrs, 
+    _csr_adapter = new CudaTwoDLib::CSRAdapter(*_group_adapter, _csrs,
         _effs.size(), h, _mesh_transform_indexes, _grid_transform_indexes);
 
     _csr_adapter->InitializeStaticGridCellCsrNd(_connection_out_group_mesh, csrs);
@@ -745,6 +821,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display * displa
     const auto p1 = std::chrono::system_clock::now();
     _csr_adapter->setRandomSeeds(std::chrono::duration_cast<std::chrono::seconds>(
         p1.time_since_epoch()).count());
+
 }
 
 std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities, unsigned int i_loop) {
@@ -789,22 +866,32 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
         _group_adapter->RemapReversalFiniteObjects();
 
         _csr_adapter->ClearDerivative();
+
         _csr_adapter->SingleTransformStep();
+
         _csr_adapter->AddDerivativeFull();
-        
+
         _csr_adapter->SingleTransformStepFiniteSize();
     }
+
+
+
 
     for (unsigned int i = 0; i < rates.size(); i++)
         rates[i] *= _n_steps;
 
+    _csr_adapter->ClearDerivative();
     for (MPILib::Index i_part = 0; i_part < _master_steps; i_part++) {
-        _csr_adapter->ClearDerivative();
-        _csr_adapter->CalculateMeshGridDerivativeWithEfficacy(_connection_out_group_mesh, rates);
-        _csr_adapter->AddDerivative();
-    }
 
-    _csr_adapter->CalculateMeshGridDerivativeWithEfficacyFinite(_connection_out_group_mesh, rates, _effs, _grid_cell_widths, _grid_cell_offsets, _vec_mesh[0].TimeStep());
+        _csr_adapter->CalculateMeshGridDerivativeWithEfficacy(_connection_out_group_mesh, _connection_in, rates, _vec_vec_kernel_values);
+
+    }
+    _csr_adapter->AddDerivative();
+
+    _csr_adapter->ShiftHistories();
+
+
+    _csr_adapter->CalculateMeshGridDerivativeWithEfficacyFinite(_connection_out_group_mesh, rates, _effs, _grid_cell_widths, _grid_cell_offsets, _vec_mesh[0].TimeStep(), _vec_vec_kernel_values);
 
     _group_adapter->RedistributeFiniteObjects(_mesh_meshes, _vec_mesh[0].TimeStep(), _n_steps, _csr_adapter->getCurandState());
     _group_adapter->RedistributeGridFiniteObjects(_grid_meshes, _n_steps, _csr_adapter->getCurandState());
@@ -826,15 +913,17 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
             _connection_queue[_node_to_connection_queue[_group_mesh_to_node_id[i]][j]].updateQueue(group_rates[i]);
         }
     }
-    
+
     std::vector<double> monitored_rates(_monitored_nodes.size());
     for (unsigned int i = 0; i < _monitored_nodes.size(); i++) {
         monitored_rates[i] = group_rates[_node_id_to_group_mesh[_monitored_nodes[i]]];
     }
-  
+
     if (_display_nodes.size() > 0) {
         _group_adapter->updateGroupMass();
         _group_adapter->updateFiniteObjects();
+
+
     }
 
     if (_density_nodes.size() > 0) {

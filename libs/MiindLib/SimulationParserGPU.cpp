@@ -2,7 +2,7 @@
 #include <TwoDLib/XML.hpp>
 
 template<>
-SimulationParserGPU<MPILib::CustomConnectionParameters>::SimulationParserGPU(int num_nodes, const std::string xml_filename, std::map<std::string,std::string> vars) :
+SimulationParserGPU<MPILib::CustomConnectionParameters>::SimulationParserGPU(int num_nodes, const std::string xml_filename, std::map<std::string, std::string> vars) :
 	SimulationParserCPU(num_nodes, xml_filename, vars), vec_network(0.001) {
 }
 
@@ -65,7 +65,7 @@ void SimulationParserGPU<WeightType>::endSimulation() {
 
 template<>
 void SimulationParserGPU<MPILib::CustomConnectionParameters>::addGridConnection(pugi::xml_node& xml_conn) {
-	
+
 	std::map<std::string, std::string> connection_parameters;
 
 	std::string in = SimulationParserCPU<MPILib::CustomConnectionParameters>::interpretValueAsString(std::string(xml_conn.attribute("In").value())) + std::string("_") + std::to_string(SimulationParserCPU<MPILib::CustomConnectionParameters>::_current_node);
@@ -176,7 +176,7 @@ void SimulationParserGPU<MPILib::DelayedConnection>::addIncomingGridConnection(p
 	connection_parameters["num_connections"] = SimulationParserCPU<MPILib::DelayedConnection>::interpretValueAsString(std::string(num_connections));
 	connection_parameters["efficacy"] = SimulationParserCPU<MPILib::DelayedConnection>::interpretValueAsString(std::string(efficacy));
 	connection_parameters["delay"] = SimulationParserCPU<MPILib::DelayedConnection>::interpretValueAsString(std::string(delay));
-	
+
 	vec_network.addGridConnection(SimulationParserCPU<MPILib::DelayedConnection>::_node_ids[node], connection_parameters, _external_node_count);
 }
 
@@ -196,25 +196,25 @@ void SimulationParserGPU<MPILib::CustomConnectionParameters>::addIncomingMeshCon
 		connection_parameters[std::string(ait->name())] = SimulationParserCPU<MPILib::CustomConnectionParameters>::interpretValueAsString(std::string(ait->value()));
 		// todo : Check the value for a variable definition - need a special function for checking all inputs really
 	}
-		
+
 	vec_network.addMeshCustomConnection(SimulationParserCPU<MPILib::CustomConnectionParameters>::_node_ids[node], connection_parameters, &_mesh_transition_matrics[_node_algorithm_mapping[node]][SimulationParserCPU<MPILib::CustomConnectionParameters>::interpretValueAsDouble(efficacy)], _external_node_count);
 }
 
 template<>
 void SimulationParserGPU<MPILib::DelayedConnection>::addIncomingMeshConnection(pugi::xml_node& xml_conn) {
 	std::string node = SimulationParserCPU<MPILib::DelayedConnection>::interpretValueAsString(std::string(xml_conn.attribute("Node").value())) + std::string("_") + std::to_string(SimulationParserCPU<MPILib::DelayedConnection>::_current_node);
-	
+
 	std::string values = std::string(xml_conn.text().as_string());
 	char num_connections[255];
 	char efficacy[255];
 	char delay[255];
 	std::sscanf(values.c_str(), "%s %s %s", num_connections, efficacy, delay);
 
-	vec_network.addMeshConnection(SimulationParserCPU<MPILib::DelayedConnection>::_node_ids[node], 
-		interpretValueAsDouble(std::string(efficacy)), 
-		interpretValueAsDouble(std::string(num_connections)), 
-		interpretValueAsDouble(std::string(delay)), 
-		&_mesh_transition_matrics[_node_algorithm_mapping[node]][SimulationParserCPU<MPILib::DelayedConnection>::interpretValueAsDouble(std::string(efficacy))], 
+	vec_network.addMeshConnection(SimulationParserCPU<MPILib::DelayedConnection>::_node_ids[node],
+		interpretValueAsDouble(std::string(efficacy)),
+		interpretValueAsDouble(std::string(num_connections)),
+		interpretValueAsDouble(std::string(delay)),
+		&_mesh_transition_matrics[_node_algorithm_mapping[node]][SimulationParserCPU<MPILib::DelayedConnection>::interpretValueAsDouble(std::string(efficacy))],
 		_external_node_count);
 }
 
@@ -236,6 +236,13 @@ bool SimulationParserGPU<WeightType>::addGridAlgorithmGroupNode(pugi::xml_docume
 			double start_x = SimulationParserCPU<WeightType>::interpretValueAsDouble(std::string(algorithm.attribute("start_x").value()));
 			double time_step = SimulationParserCPU<WeightType>::interpretValueAsDouble(std::string(algorithm.child_value("TimeStep")));
 
+			//TODO remove this note
+			//NOTE: don't put this after pugi::xml_node model = doc.first_child();
+			std::vector<double> kernel_values;
+			for (double kern : SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"))) {
+				kernel_values.push_back(kern);
+			}
+
 			// todo: Check time_step matches network time step
 
 			pugi::xml_parse_result model_file_xml = doc.load_file(model_filename.c_str());
@@ -246,7 +253,9 @@ bool SimulationParserGPU<WeightType>::addGridAlgorithmGroupNode(pugi::xml_docume
 			_reset_mappings.push_back(TwoDLib::RetrieveMappingFromXML("Reset", model));
 			_transition_mats.push_back(TwoDLib::TransitionMatrix(transform_filename));
 
-			vec_network.addGridNode(_meshes.back(), _transition_mats.back(), start_v, start_w, start_u, start_x, _reversal_mappings.back(), _reset_mappings.back(), tau_refractive, finite_size);
+
+			vec_network.addGridNode(_meshes.back(), _transition_mats.back(), start_v, start_w, start_u, start_x, _reversal_mappings.back(), _reset_mappings.back(), tau_refractive, finite_size, kernel_values);
+
 			return true;
 		}
 	}
@@ -280,6 +289,14 @@ bool SimulationParserGPU<WeightType>::addMeshAlgorithmGroupNode(pugi::xml_docume
 				_mesh_transition_matrics[algorithm_name] = matrices;
 			}
 
+
+			//TODO remove this note
+			//NOTE: don't put this after pugi::xml_node model = doc.first_child();
+			std::vector<double> kernel_values;
+			for (double kern : SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"))) {
+				kernel_values.push_back(kern);
+			}
+
 			// todo: Check time_step matches network time step
 
 			pugi::xml_parse_result model_file_xml = doc.load_file(model_filename.c_str());
@@ -289,7 +306,7 @@ bool SimulationParserGPU<WeightType>::addMeshAlgorithmGroupNode(pugi::xml_docume
 			_reversal_mappings.push_back(TwoDLib::RetrieveMappingFromXML("Reversal", model));
 			_reset_mappings.push_back(TwoDLib::RetrieveMappingFromXML("Reset", model));
 
-			vec_network.addMeshNode(_meshes.back(), _reversal_mappings.back(), _reset_mappings.back(), tau_refractive, finite_size);
+			vec_network.addMeshNode(_meshes.back(), _reversal_mappings.back(), _reset_mappings.back(), tau_refractive, finite_size, kernel_values);
 
 			return true;
 		}
@@ -309,10 +326,17 @@ bool SimulationParserGPU<WeightType>::addRateFunctorNode(pugi::xml_document& doc
 
 			double rate = SimulationParserCPU<WeightType>::interpretValueAsDouble(std::string(algorithm.child_value("expression")));
 
+			//TODO remove this note
+			//NOTE: don't put this after pugi::xml_node model = doc.first_child();
+			std::vector<double> kernel_values;
+			for (double kern : SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"))) {
+				kernel_values.push_back(kern);
+			}
+
 			rate_functor rf(rate);
 			_rate_functors.push_back(rf);
 
-			vec_network.addRateNode(_rate_functors.back());
+			vec_network.addRateNode(_rate_functors.back(), kernel_values);
 			return true;
 		}
 
@@ -425,6 +449,7 @@ void SimulationParserGPU<WeightType>::parseXmlFile() {
 			SimulationParserCPU<WeightType>::_density_node_intervals.push_back(t_interval);
 		}
 
+
 		//Reporting Rates
 		for (pugi::xml_node conn = doc.child("Simulation").child("Reporting").child("Rate"); conn; conn = conn.next_sibling("Rate")) {
 			std::string node = SimulationParserCPU<WeightType>::interpretValueAsString(std::string(conn.attribute("node").value())) + std::string("_") + std::to_string(node_num);
@@ -450,7 +475,6 @@ void SimulationParserGPU<WeightType>::parseXmlFile() {
 			SimulationParserCPU<WeightType>::_display_nodes.push_back(SimulationParserCPU<WeightType>::_node_ids[node]);
 		}
 	}
-
 
 	//Simulation Parameters
 	double simulation_length = SimulationParserCPU<WeightType>::interpretValueAsDouble(std::string(doc.child("Simulation").child("SimulationRunParameter").child_value("t_end")));
@@ -491,7 +515,7 @@ void SimulationParserGPU<WeightType>::init() {
 template<class WeightType>
 std::vector<double> SimulationParserGPU<WeightType>::evolveSingleStep(std::vector<double> activity) {
 	std::vector<double> out_activities;
-	for(auto& it : vec_network.singleStep(activity, SimulationParserCPU<WeightType>::_count)) {
+	for (auto& it : vec_network.singleStep(activity, SimulationParserCPU<WeightType>::_count)) {
 		out_activities.push_back(it);
 	}
 

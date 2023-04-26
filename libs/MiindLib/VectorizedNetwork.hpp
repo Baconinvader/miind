@@ -5,9 +5,11 @@
 #include <MPILib/include/DelayedConnectionQueue.hpp>
 #include <TwoDLib/display.hpp>
 #include <TwoDLib/MasterParameter.hpp>
+#include <TwoDLib/SimulationParserCPU.h>
 
 typedef CudaTwoDLib::fptype fptype;
 typedef CudaTwoDLib::inttype inttype;
+typedef CudaTwoDLib::dbltype dbltype;
 typedef MPILib::Rate(*function_pointer)(MPILib::Time);
 typedef std::pair<MPILib::Index, function_pointer> function_association;
 typedef std::vector<function_association> function_list;
@@ -21,6 +23,7 @@ public:
     MPILib::Rate operator () (MPILib::Time) const {
         return _rate;
     }
+
 };
 
 namespace MiindLib {
@@ -37,10 +40,14 @@ namespace MiindLib {
         int _n_connections;
 
         NodeMeshConnection(MPILib::NodeId in, MPILib::NodeId out, double eff, int n_conns, double delay, TwoDLib::TransitionMatrix* trans) :
-            _external(false), _external_id(0), _in(in), _out(out), _efficacy(eff), _n_connections(n_conns), _delay(delay), _transition(trans) {}
+            _external(false), _external_id(0), _in(in), _out(out), _efficacy(eff), _n_connections(n_conns), _delay(delay), _transition(trans) {
+            std::cout << "NEW MESH CON " << _in << " -> " << _out << std::endl;
+        }
 
         NodeMeshConnection(MPILib::NodeId out, double eff, int n_conns, double delay, TwoDLib::TransitionMatrix* trans, MPILib::NodeId ext_id) :
-            _external(true), _external_id(ext_id), _out(out), _efficacy(eff), _n_connections(n_conns), _delay(delay), _transition(trans) {}
+            _external(true), _external_id(ext_id), _out(out), _efficacy(eff), _n_connections(n_conns), _delay(delay), _transition(trans) {
+            std::cout << "NEW MESH CON [no in] -> " << _out << std::endl;
+        }
     };
 
     class NodeGridConnection {
@@ -124,13 +131,13 @@ namespace MiindLib {
             std::vector<inttype>& grid_cell_strides);
 
         void addGridNode(TwoDLib::Mesh mesh, TwoDLib::TransitionMatrix tmat, double start_v, double start_w, double start_u, double start_x,
-            std::vector<TwoDLib::Redistribution> vec_rev, std::vector<TwoDLib::Redistribution> vec_res, double tau_refractive, unsigned int finite_size = 0);
+            std::vector<TwoDLib::Redistribution> vec_rev, std::vector<TwoDLib::Redistribution> vec_res, double tau_refractive, unsigned int finite_size = 0, std::vector<double> vec_kernel = { 1.0 });
 
-        void addMeshNode(TwoDLib::Mesh mesh, std::vector<TwoDLib::Redistribution> vec_rev, std::vector<TwoDLib::Redistribution> vec_res, double tau_refractive, unsigned int finite_size = 0);
+        void addMeshNode(TwoDLib::Mesh mesh, std::vector<TwoDLib::Redistribution> vec_rev, std::vector<TwoDLib::Redistribution> vec_res, double tau_refractive, unsigned int finite_size = 0, std::vector<double> vec_kernel_values = { 1.0 });
 
-        void addRateNode(function_pointer functor);
+        void addRateNode(function_pointer functor, std::vector<double> vec_kernel_values = { 1.0 });
 
-        void addRateNode(rate_functor functor);
+        void addRateNode(rate_functor functor, std::vector<double> vec_kernel_values = { 1.0 });
 
         void addExternalMonitor(MPILib::NodeId node);
 
@@ -197,6 +204,10 @@ namespace MiindLib {
         std::vector<inttype> _num_mesh_objects;
         std::vector<inttype> _num_objects;
 
+        //TODO rename this?
+        std::vector< std::vector<double> > _vec_vec_kernel_values;
+        std::vector< dbltype > _vec_kernel_values;
+
         TwoDLib::Ode2DSystemGroup* _group;
 
         CudaTwoDLib::CudaOde2DSystemAdapter* _group_adapter;
@@ -222,6 +233,7 @@ namespace MiindLib {
         std::vector<MPILib::Time> _density_intervals;
 
         std::vector<inttype> _connection_out_group_mesh;
+        std::vector<inttype> _connection_in;
         std::vector<MPILib::DelayedConnectionQueue> _connection_queue;
         std::map<MPILib::NodeId, std::vector<MPILib::NodeId>> _node_to_connection_queue;
         std::map<MPILib::NodeId, std::vector<MPILib::NodeId>> _external_to_connection_queue;

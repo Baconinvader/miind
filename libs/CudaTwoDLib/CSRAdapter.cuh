@@ -59,7 +59,7 @@ namespace CudaTwoDLib {
 
 		void CalculateDerivative(const std::vector<fptype>&);
 
-		void CalculateMeshGridDerivative(const std::vector<inttype>&, const std::vector<fptype>&, const std::vector<fptype>&, const std::vector<fptype>&, const std::vector<int>&, const std::vector<int>&);
+		void CalculateMeshGridDerivative(const std::vector<inttype>&, const std::vector<fptype>&, const std::vector<fptype>&, const std::vector<fptype>&, const std::vector<int>&, const std::vector<int>&, const std::vector<std::vector<dbltype>>&);
 
 		void CalculateGridDerivative(const std::vector<inttype>&, const std::vector<fptype>&, const std::vector<fptype>&, const std::vector<fptype>&, const std::vector<int>&, const std::vector<int>&);
 
@@ -73,13 +73,17 @@ namespace CudaTwoDLib {
 
 		void InitializeStaticGridConductanceEfficacies(const std::vector<inttype>& vecindex, const std::vector<fptype>& efficacy, const std::vector<fptype>& cell_widths, const std::vector<inttype>& cell_offsets, const std::vector<fptype>& rest_vs);
 
-		void CalculateMeshGridDerivativeWithEfficacy(const std::vector<inttype>& vecindex, const std::vector<fptype>& vecrates);
+		void CalculateMeshGridDerivativeWithEfficacy(const std::vector<inttype>& vecindex, const std::vector<inttype>& out_vecindex, const std::vector<fptype>& vecrates, const std::vector<std::vector<dbltype>>&);
 
 		void CalculateMeshGridDerivativeWithEfficacyFinite(const std::vector<inttype>& vecindex, const std::vector<fptype>& vecrates, const std::vector<fptype>& efficacy, const std::vector<fptype>& cell_widths, const std::vector<inttype>& cell_offsets, double timestep);
+		//TODO re-add with finite
+		//void CalculateMeshGridDerivativeWithEfficacyFinite(const std::vector<inttype>& vecindex, const std::vector<fptype>& vecrates, const std::vector<fptype>& efficacy, const std::vector<fptype>& cell_widths, const std::vector<inttype>& cell_offsets, double timestep, const std::vector< std::vector<dbltype>>& kernels);
 
 		void SingleTransformStep();
 
 		void SingleTransformStepFiniteSize();
+
+		void ShiftHistories();
 
 		void AddDerivative();
 
@@ -130,8 +134,8 @@ namespace CudaTwoDLib {
 		std::vector<inttype>   _nja;
 		std::vector<inttype*>  _ja;
 
-		curandState*				   _randomState;
-		inttype*					_random_poisson;
+		curandState* _randomState;
+		inttype* _random_poisson;
 
 		std::vector<inttype*>  _forward_ia;
 		std::vector<inttype*>  _forward_ja;

@@ -28,15 +28,16 @@
 namespace CudaTwoDLib {
 
 
-	  /**
-	   * \brief  Responsible for maintaining the mirror of an Ode2DSystemGroup on a GPGPU device
-	   *
-	   * Maintains and when necessary synchronizes the mass array and the current mapping of the Ode2DGroup on the device
-	   */
+	/**
+	 * \brief  Responsible for maintaining the mirror of an Ode2DSystemGroup on a GPGPU device
+	 *
+	 * Maintains and when necessary synchronizes the mass array and the current mapping of the Ode2DGroup on the device
+	 */
 
-        //! floating point type for cuda system
+	 //! floating point type for cuda system
 	typedef float fptype;
 	typedef unsigned int inttype;
+	typedef double dbltype;
 
 	class CudaOde2DSystemAdapter {
 	public:
@@ -51,15 +52,18 @@ namespace CudaTwoDLib {
 		CudaOde2DSystemAdapter
 		(
 			TwoDLib::Ode2DSystemGroup& group, // The group must already be initialized. This will be checked and an exception will be thrown if it is suspected this has not happened
-		    double network_time_step,
-			unsigned int mesh_objects_start_index = 0
+			double network_time_step,
+			unsigned int mesh_objects_start_index = 0,
+			std::vector< std::vector<double> > kernels = { {1.0} } //TODO rename this?
 		);
+
+
 
 
 		~CudaOde2DSystemAdapter();
 
 
-        void Evolve();
+		void Evolve();
 
 		void Evolve(std::vector<inttype>& meshes);
 
@@ -73,9 +77,9 @@ namespace CudaTwoDLib {
 
 		void EvolveWithoutTransfer(std::vector<inttype>& meshes);
 
-        void Dump(const std::vector<std::ostream*>&, int mode = 0);
+		void Dump(const std::vector<std::ostream*>&, int mode = 0);
 
-        void RemapReversal();
+		void RemapReversal();
 
 		void RemapReversalFiniteObjects();
 
@@ -99,6 +103,8 @@ namespace CudaTwoDLib {
 
 		void updateFiniteObjects();
 
+
+
 		void TransferFiniteObjects();
 
 		void updateRefractory();
@@ -110,54 +116,64 @@ namespace CudaTwoDLib {
 		inttype* getSpikes() { return _spikes; }
 
 		friend class CSRAdapter;
-								
+
 		MPILib::Potential getAvgV(unsigned int m);
 
-        const std::vector<fptype>& F(unsigned int n_steps = 1) const;
+		const std::vector<fptype>& F(unsigned int n_steps = 1) const;
 
 		const unsigned int NumObjects() const { return _group.NumObjects(); }
 
 		const std::vector<inttype> getGroupObjects() const { return _vec_num_objects; }
 
 		TwoDLib::Ode2DSystemGroup& getGroup() { return _group; }
+
+		//TODO make private
+		std::vector<fptype*> _mass_histories;
+
+		//dbltype** 
+		vector<dbltype*> _vec_vec_kernels;
+
+		vector<vector<double>> _kernels;
 	private:
 
-        CudaOde2DSystemAdapter(const CudaOde2DSystemAdapter&);
-        CudaOde2DSystemAdapter& operator=(const CudaOde2DSystemAdapter&);
+		CudaOde2DSystemAdapter(const CudaOde2DSystemAdapter&);
+		CudaOde2DSystemAdapter& operator=(const CudaOde2DSystemAdapter&);
 
-        struct MapElement {
-            inttype _to;
-            inttype _from;
-            fptype  _alpha;
-        };
+		struct MapElement {
+			inttype _to;
+			inttype _from;
+			fptype  _alpha;
+		};
 
 		void Validate() const;
 
-        void FillMass();
-        void FillMapData();
-        void TransferMapData();
+		void FillMass(const unsigned int histories_count);
+		fptype CudaOde2DSystemAdapter::SumMass(const int history_index);
+		void FillMapData();
+		void TransferMapData();
 		void EstimateGridThresholdsResetsRefractories(const std::vector<TwoDLib::Mesh>& vec_mesh,
 			const std::vector<std::vector<TwoDLib::Redistribution> >& vec_vec_reset, const std::vector<MPILib::Time>& times);
 
-		void FillFiniteVectors();
 
-        void FillReversalMap(const std::vector<TwoDLib::Mesh>&, const std::vector<std::vector<TwoDLib::Redistribution> >&);
-        void FillResetMap(const std::vector<TwoDLib::Mesh>&, const std::vector<std::vector<TwoDLib::Redistribution> >&);
-				void FillRefractoryTimes(const std::vector<MPILib::Time>&);
+		void FillReversalMap(const std::vector<TwoDLib::Mesh>&, const std::vector<std::vector<TwoDLib::Redistribution> >&);
+		void FillResetMap(const std::vector<TwoDLib::Mesh>&, const std::vector<std::vector<TwoDLib::Redistribution> >&);
+		void FillRefractoryTimes(const std::vector<MPILib::Time>&);
 
-        void DeleteMass();
+		void DeleteMass();
 		void DeleteFiniteVectors();
 		void DeleteMapData();
 		void DeleteReversalMap();
-        void DeleteResetMap();
+		void DeleteResetMap();
 		void FillDerivative();
 		void DeleteDerivative();
 		void FillSpikesAndSpikeCounts();
 
+
+
 		TwoDLib::Ode2DSystemGroup& _group;
-        inttype	 _n;
-        inttype _mesh_size;
-        fptype _time_step;
+		inttype	 _n;
+		inttype _mesh_size;
+		fptype _time_step;
 		fptype _network_time_step;
 
 		std::vector<unsigned int> _nr_refractory_steps;
@@ -166,17 +182,19 @@ namespace CudaTwoDLib {
 		std::vector<std::vector<fptype>> _refractory_mass_local;
 		std::vector<std::vector<fptype>>  _vec_alpha_ord;
 
-		fptype*  _mass;
-        std::vector<fptype> _hostmass;
-        inttype* _map;
-        std::vector<inttype> _hostmap;
+		fptype* _mass;
+
+
+		std::vector<fptype> _hostmass;
+		inttype* _map;
+		std::vector<inttype> _hostmap;
 		inttype* _unmap;
 		std::vector<inttype> _hostunmap;
 		inttype* _map_cumulative_value;
 		std::vector<inttype> _host_map_cumulative_value;
 		inttype* _map_strip_length_value;
 		std::vector<inttype> _host_map_strip_length_value;
-        std::vector<inttype> _offsets;
+		std::vector<inttype> _offsets;
 
 		// Finite size
 		std::vector<inttype>  _vec_num_objects;
@@ -189,24 +207,25 @@ namespace CudaTwoDLib {
 		std::vector<inttype> _host_vec_objects_to_index;
 		//std::vector<inttype*> _vec_cells_to_objects;
 		//std::vector<std::vector<inttype>> _host_vec_cells_to_objects;
-		fptype*  _vec_objects_refract_times;
+		fptype* _vec_objects_refract_times;
 		std::vector<fptype> _host_vec_objects_refract_times;
 		inttype* _vec_objects_refract_index;
 		std::vector<inttype> _host_vec_objects_refract_index;
+
 
 		std::vector<fptype> _thresholds;
 		std::vector<fptype> _resets;
 		std::vector<fptype> _reset_ws;
 		std::vector<fptype> _refractories;
 
-        // reversal mapping
-        inttype  _n_rev;
-        inttype* _rev_to;
-        inttype* _rev_from;
-        fptype*  _rev_alpha;
+		// reversal mapping
+		inttype  _n_rev;
+		inttype* _rev_to;
+		inttype* _rev_from;
+		fptype* _rev_alpha;
 
-        // reset mapping
-        std::vector<inttype> _nr_resets;
+		// reset mapping
+		std::vector<inttype> _nr_resets;
 		std::vector<inttype>  _nr_minimal_resets;
 		std::vector<inttype*> _res_to_minimal;
 		std::vector<fptype*>  _res_alpha_ordered;
@@ -223,10 +242,10 @@ namespace CudaTwoDLib {
 		int _blockSize;
 		int _numBlocks;
 
-        // firing rates
-        fptype* _fs;
-        //technically this modifies the object, but the client shouldn't modify the frequencies
-        mutable std::vector<fptype> _host_fs;
+		// firing rates
+		fptype* _fs;
+		//technically this modifies the object, but the client shouldn't modify the frequencies
+		mutable std::vector<fptype> _host_fs;
 
 	};
 }

@@ -456,7 +456,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display* display
     for (unsigned int i = 0; i < _grid_connections.size(); i++) {
         // for each connection, which of group's meshes is being affected
         _connection_out_group_mesh.push_back(_node_id_to_group_mesh[_grid_connections[i]._out]);
-        _connection_in.push_back(_mesh_connections[i]._in);
+        _connection_in.push_back(_grid_connections[i]._in);
         _effs.push_back(std::stod(_grid_connections[i]._params["efficacy"]));
 
         int total_num_cells = 1;
@@ -766,7 +766,7 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display* display
     for (unsigned int i = 0; i < _mesh_custom_connections.size(); i++) {
         // for each connection, which of group's meshes is being affected
         _connection_out_group_mesh.push_back(_node_id_to_group_mesh[_mesh_custom_connections[i]._out]);
-        _connection_in.push_back(_mesh_connections[i]._in);
+        _connection_in.push_back(_mesh_custom_connections[i]._in);
 
         TwoDLib::TransitionMatrix mat = *(_mesh_custom_connections[i]._transition);
         auto id = _node_id_to_group_mesh[_mesh_custom_connections[i]._out];

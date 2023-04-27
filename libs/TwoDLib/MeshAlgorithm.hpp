@@ -160,8 +160,6 @@ namespace TwoDLib {
 		 */
 		void InitializeDensity(MPILib::Index i, MPILib::Index j) { _sys.Initialize(0, i, j); }
 
-		vector<double> InitializeKernel(const std::vector<double> kernel_values) const;
-
 		const Ode2DSystemGroup& Sys() const { return _sys; }
 
 
@@ -223,6 +221,7 @@ namespace TwoDLib {
 		MPILib::Number			_n_steps;
 
 		const vector<double>& (TwoDLib::Ode2DSystemGroup::* _sysfunction) () const;
+		std::vector<double> InitializeKernel(const std::vector<double> kernel_values) const;
 	};
 }
 

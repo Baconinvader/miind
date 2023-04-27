@@ -84,7 +84,7 @@ namespace TwoDLib {
 
 		void InitializeDensity(MPILib::Index i, MPILib::Index j) { _sys.Initialize(0, i, j); }
 
-		vector<double> InitializeKernel(const std::vector<double> kernel_values) const;
+		std::vector<double> InitializeKernel(const std::vector<double> kernel_values) const;
 
 		const Ode2DSystemGroup& Sys() const { return _sys; }
 
@@ -127,7 +127,7 @@ namespace TwoDLib {
 		std::vector<std::vector<MPILib::DelayedConnectionQueue>> _vec_vec_delay_queues;
 
 		TransitionMatrix 							_transformMatrix;
-		CSRMatrix*                                  _csr_transform;
+		CSRMatrix* _csr_transform;
 		vector<double>								_mass_swap;
 		vector<double>								_efficacy_map;
 

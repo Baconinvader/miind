@@ -88,6 +88,8 @@ namespace MPILib {
 		Time _time_current;
 		Rate _rate;
 		vector<double> _vec_kernel;
+
+		std::vector<double> InitializeKernel(const std::vector<double> kernel_values) const;
 	};
 
 } /* namespace MPILib */

@@ -31,7 +31,7 @@ namespace MPILib {
 		AlgorithmInterface<Weight>(), _time_current(
 			std::numeric_limits<double>::max()),
 		_rate(rate),
-		_vec_kernel(kernel) {
+		_vec_kernel(InitializeKernel(kernel)) {
 	}
 
 	template<class Weight>
@@ -39,7 +39,7 @@ namespace MPILib {
 		AlgorithmInterface<Weight>(), _time_current(
 			std::numeric_limits<double>::max()),
 		_rate(rate),
-		_vec_kernel({ 1.0 }) {
+		_vec_kernel(InitializeKernel({ 1.0 })) {
 	}
 
 	template<class Weight>
@@ -81,11 +81,20 @@ namespace MPILib {
 		return _vec_kernel;
 	}
 
+
+
 	template<class Weight>
 	AlgorithmGrid RateAlgorithm<Weight>::getGrid(NodeId, bool) const {
 		std::vector<double> vector_grid(RATE_STATE_DIMENSION, _rate);
 		std::vector<double> vector_interpretation(RATE_STATE_DIMENSION, 0);
 		return AlgorithmGrid(vector_grid, vector_interpretation);
+	}
+
+	template<class Weight>
+	std::vector<double> RateAlgorithm<Weight>::InitializeKernel(const std::vector<double> kernel_values) const
+	{
+		checkKernel(kernel_values);
+		return kernel_values;
 	}
 
 } /* namespace MPILib */

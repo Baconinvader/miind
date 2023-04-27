@@ -121,8 +121,7 @@ namespace TwoDLib {
 		void EvolveWithoutMeshUpdate();
 
 		//! Add a new finite object to the top history list, and shift the rest of the histories down
-		// TODO: re-add this when finite stuff works
-		//void ShiftFiniteObjectHistories();
+		void ShiftFiniteObjectHistories();
 
 		//! Dump the current density profile (0), or the mass profile (1) to an output stream
 		void Dump(const std::vector<std::ostream*>&, int mode = 0) const;
@@ -387,8 +386,7 @@ namespace TwoDLib {
 		std::vector<double> MeshVs(const std::vector<Mesh>&) const;
 
 		void InitializeFiniteObjects();
-		//TODO: re-add when finite objects is fixed
-		//void InitializeFiniteObjectHistories(const unsigned int count);
+		void InitializeFiniteObjectHistories(const unsigned int count);
 
 		bool				  CheckConsistency() const;
 		std::vector<Reset>    InitializeReset();
@@ -431,13 +429,9 @@ namespace TwoDLib {
 		vector<MPILib::Index>			_vec_objects_refract_index; // holds the threshold index of each refracting object
 		std::vector<std::map<MPILib::Index, std::map<MPILib::Index, double>>> _vec_reset_sorted;
 
-		//TODO  re-add when finite objects is fixed
-		/*
 		vector<vector<MPILib::Index>>	_vec_vec_objects_to_index; // used for holding a history of finite objects
 		vector<vector<double>>          _vec_vec_objects_refract_times; // used for holding a history of object refractory times
 		vector<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
-		vector<vector<MPILib::Index>>   _vec_vec_objects_refract_index; // used for holding a history of object refractory indices
-		*/
 
 		void updateVecObjectsToIndex() {
 			for (int i = 0; i < _vec_cells_to_objects.size(); i++) {

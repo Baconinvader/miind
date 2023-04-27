@@ -201,28 +201,10 @@ namespace TwoDLib {
 	}
 
 	template <class WeightValue, class Solver>
-	vector<double> MeshAlgorithm<WeightValue, Solver>::InitializeKernel(const std::vector<double> kernel_values) const
+	std::vector<double> MeshAlgorithm<WeightValue, Solver>::InitializeKernel(const std::vector<double> kernel_values) const
 	{
-		vector<double> kernel;
-
-		if (kernel_values.size() == 0) {
-			//default
-			kernel = { 1.0 };
-		}
-		else {
-			double kernel_sum = 0.;
-			for (int h = 0; h < kernel_values.size(); h++) {
-				kernel.push_back(kernel_values.at(h));
-				kernel_sum += kernel_values.at(h);
-			}
-
-			if (kernel_sum != 1) {
-				std::cout << "Mesh kernel doesn't sum to 1 (sums to" << kernel_sum << "). This will lead to an incorrect probability mass." << std::endl;
-			}
-		}
-
-		return kernel;
-
+		checkKernel(kernel_values);
+		return kernel_values;
 	}
 
 	template <class WeightValue, class Solver>
@@ -503,12 +485,6 @@ namespace TwoDLib {
 			_vec_vec_delay_queues[0][i].updateQueue(nodeVector[i] * weightVector[i]._number_of_connections);
 		}
 	}
-
-	/*template <class WeightValue, class Solver>
-	std::vector<double> MeshAlgorithm<WeightValue, Solver>::getKernel() const
-	{
-		return _sys._vec_kernel;
-	}*/
 
 
 }

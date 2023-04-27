@@ -6,22 +6,21 @@
 using namespace MiindLib;
 
 // check to make sure a given vector of kernel values is valid
-bool checkKernel(vector<double> kernel) {
-    std::cout << "checking kernel " << kernel.empty() << ", " << kernel.size() << std::endl;
+bool checkKernel(std::vector<double> kernel) {
     double kernel_sum = 0.0;
 
-    std::cout << "miind" << std::endl;
-    if (kernel.empty()) {
+    /*if (kernel.empty()) {
         std::cout << "Warning: kernel has been declared using <kernel></kernel> but has not been specified. Specify kernel values using <value></value> XML." << std::endl;
         return false;
-    }
+    }*/
 
     for (double value : kernel) {
         kernel_sum += value;
     }
 
 
-    if (abs(kernel_sum - 1.0) > std::numeric_limits<double>::epsilon()) {
+    double tolerance = 0.000001;
+    if (abs(kernel_sum - 1.0) > tolerance) {
         if (kernel_sum > 1.0) {
             std::cout << "Warning: kernel weights sum to " << kernel_sum << " instead of 1.0, which will likely lead to errors" << std::endl;
         }
@@ -59,10 +58,8 @@ void VectorizedNetwork::addGridNode(TwoDLib::Mesh mesh, TwoDLib::TransitionMatri
     _start_us.push_back(start_u);
     _start_xs.push_back(start_x);
 
-    //TODO: this should only give a warn
-    //if (checkKernel(vec_kernel_values)) {
+    checkKernel(vec_kernel_values);
     _vec_vec_kernel_values.push_back(vec_kernel_values);
-    //}
 
     _num_grid_objects.push_back(finite_size);
 
@@ -79,10 +76,8 @@ void VectorizedNetwork::addMeshNode(TwoDLib::Mesh mesh,
     _mesh_vec_tau_refractive.push_back(tau_refractive);
     _num_mesh_objects.push_back(finite_size);
 
-    //TODO: this should only give a warn
-    //if ( checkKernel(vec_kernel_values) ) {
+    checkKernel(vec_kernel_values);
     _vec_vec_kernel_values.push_back(vec_kernel_values);
-    //}
 
 }
 
@@ -90,20 +85,16 @@ void VectorizedNetwork::addRateNode(function_pointer functor, std::vector<double
     _num_nodes++;
     _rate_functions.push_back(function_association(_num_nodes - 1, functor));
 
-    //TODO: this should only give a warn
-    //if ( checkKernel(vec_kernel_values) ) {
+    checkKernel(vec_kernel_values);
     _vec_vec_kernel_values.push_back(vec_kernel_values);
-    //}
 }
 
 void VectorizedNetwork::addRateNode(rate_functor functor, std::vector<double> vec_kernel_values) {
     _num_nodes++;
     _rate_functors[_num_nodes - 1] = functor;
 
-    //TODO: this should only give a warn
-    //if ( checkKernel(vec_kernel_values) ) {
+    checkKernel(vec_kernel_values);
     _vec_vec_kernel_values.push_back(vec_kernel_values);
-    //}
 }
 
 void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
@@ -880,13 +871,13 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
 
     std::cout << "steps [1]" << _master_steps << std::endl;
 
-    _csr_adapter->ClearDerivative();
+
     for (MPILib::Index i_part = 0; i_part < _master_steps; i_part++) {
-
+        _csr_adapter->ClearDerivative();
         _csr_adapter->CalculateMeshGridDerivativeWithEfficacy(_connection_out_group_mesh, _connection_in, rates, _vec_vec_kernel_values);
-
+        _csr_adapter->AddDerivative();
     }
-    _csr_adapter->AddDerivative();
+
 
     _csr_adapter->ShiftHistories();
 

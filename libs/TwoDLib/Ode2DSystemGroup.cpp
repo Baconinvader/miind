@@ -132,12 +132,12 @@ Ode2DSystemGroup::Ode2DSystemGroup
 
 {
 
+	std::cout << "Ode2DSystemGroup 1" << std::endl;
 	InitializeFiniteObjects();
-	//TODO: re-add when finite objects is fixed
-	/*if (kernel.size() > 1) {
-		InitializeFiniteObjectHistories(kernel.size());
-	}*/
+	//TODO add this in
+	InitializeFiniteObjectHistories(1);
 
+	std::cout << "Ode2DSystemGroup 2" << std::endl;
 
 	for (const auto& m : _mesh_list)
 		assert(m.TimeStep() != 0.0);
@@ -146,6 +146,7 @@ Ode2DSystemGroup::Ode2DSystemGroup
 
 	_vec_reset_sorted = std::vector<std::map<MPILib::Index, std::map<MPILib::Index, double>>>();
 
+	std::cout << "Ode2DSystemGroup 3" << std::endl;
 
 	for (int r = 0; r < _vec_reset.size(); r++) {
 		std::map<MPILib::Index, std::map<MPILib::Index, double>> mapping = std::map<MPILib::Index, std::map<MPILib::Index, double>>();
@@ -158,6 +159,7 @@ Ode2DSystemGroup::Ode2DSystemGroup
 		_vec_reset_sorted.push_back(mapping);
 	}
 
+	std::cout << "Ode2DSystemGroup 4" << std::endl;
 }
 
 Ode2DSystemGroup::Ode2DSystemGroup
@@ -263,6 +265,7 @@ vector<vector<MPILib::Potential>> Ode2DSystemGroup::InitializeMasses(const unsig
 
 	vector<vector<MPILib::Potential>> histories;
 
+	std::cout << "Ode2DSystemGroup InitializeMasses " << count << std::endl;
 	//TODO add this
 	//if (count > 1) {
 	for (int h = 0; h < count; h++) {
@@ -339,6 +342,7 @@ vector<MPILib::Potential> Ode2DSystemGroup::InitializeArea(const std::vector<Mes
 }
 
 void Ode2DSystemGroup::Initialize(MPILib::Index m, MPILib::Index i, MPILib::Index j) {
+	std::cout << "Ode2D Initialize 1" << std::endl;
 	unsigned int start_index = this->Map(m, i, j);
 
 	_vec_mass[start_index] = 1.0;
@@ -350,6 +354,8 @@ void Ode2DSystemGroup::Initialize(MPILib::Index m, MPILib::Index i, MPILib::Inde
 		}
 	}
 
+	std::cout << "Ode2D Initialize 2" << std::endl;
+
 
 	for (int i = 0; i < _vec_num_objects[m]; i++) {
 		_vec_objects_to_index[i + _vec_num_object_offsets[m]] = start_index;
@@ -357,6 +363,7 @@ void Ode2DSystemGroup::Initialize(MPILib::Index m, MPILib::Index i, MPILib::Inde
 		_vec_objects_refract_index[i + _vec_num_object_offsets[m]] = 0;
 		_vec_cells_to_objects[start_index].push_back(i + _vec_num_object_offsets[m]);
 	}
+	std::cout << "Ode2D Initialize 3 " << _vec_masses.size() << ", " << _vec_num_objects.size() << ", " << _vec_vec_objects_to_index.size() << std::endl;
 
 	for (int j = 0; j < _vec_masses.size(); j++) {
 		for (int i = 0; i < _vec_num_objects[m]; i++) {
@@ -366,9 +373,11 @@ void Ode2DSystemGroup::Initialize(MPILib::Index m, MPILib::Index i, MPILib::Inde
 		}
 	}
 
+	std::cout << "Ode2D Initialize 4" << std::endl;
 }
 
 void Ode2DSystemGroup::InitializeFiniteObjectHistories(const unsigned int count) {
+	std::cout << "Ode2D InitializeFiniteObjectHistories 1 " << count << std::endl;
 	for (unsigned int i = 0; i < count; i++) {
 		_vec_vec_objects_to_index.push_back(_vec_objects_to_index);
 		_vec_vec_objects_refract_times.push_back(_vec_objects_refract_times);
@@ -466,8 +475,7 @@ void Ode2DSystemGroup::EvolveWithoutMeshUpdate() {
 		f = 0.;
 }
 
-//TODO  re-add when finite objects is fixed
-/*void Ode2DSystemGroup::ShiftFiniteObjectHistories() {
+void Ode2DSystemGroup::ShiftFiniteObjectHistories() {
 	// shift histories
 	for (unsigned int i = 1; i < _vec_masses.size(); i++) {
 		_vec_vec_objects_to_index.at(i) = _vec_vec_objects_to_index.at(i - 1);
@@ -480,7 +488,7 @@ void Ode2DSystemGroup::EvolveWithoutMeshUpdate() {
 	_vec_vec_objects_refract_times[0] = _vec_objects_refract_times;
 	//_vec_vec_objects_refract_index[0] = _vec_objects_refract_index;
 
-}*/
+}
 
 std::vector<MPILib::Index> Ode2DSystemGroup::BuildMapCumulatives() {
 	std::vector<MPILib::Index> cumulatives;

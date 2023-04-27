@@ -117,17 +117,32 @@ int SimulationParserCPU<WeightType>::interpretValueAsInt(std::string value) {
 template<class WeightType >
 std::vector<double> SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(pugi::xml_node node) {
 
-	std::cout << "val: " << node.value() << ", " << (node == 0) << std::endl;
-
 	if (!node)
 		return {};
 
 	std::vector<double> vec_values;
 	if (node) { //TODO better name
+		const pugi::char_t* value_string;
 		for (pugi::xml_node child_node = node.first_child(); child_node; child_node = child_node.next_sibling())
 		{
-			std::cout << "dbg kern " << child_node.first_child().value() << std::endl;
-			vec_values.push_back(interpretValueAsDouble(std::string(child_node.first_child().value())));
+
+			if (child_node.attribute("value")) {
+				value_string = child_node.attribute("value").value();
+
+			}
+			else if (child_node.attribute("val")) {
+				value_string = child_node.attribute("val").value();
+
+			}
+			else if (child_node.attribute("v")) {
+				value_string = child_node.attribute("v").value();
+
+			}
+			else {
+				value_string = child_node.first_child().value();
+			}
+
+			vec_values.push_back(interpretValueAsDouble(std::string(value_string)));
 		}
 	}
 
@@ -268,7 +283,13 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 			double time_step = interpretValueAsDouble(std::string(algorithm.child_value("TimeStep")));
 			std::string activity_mode = interpretValueAsString(std::string(algorithm.attribute("ratemethod").value()));
 
-			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
 			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::GridAlgorithm(model_filename, transform_filename, time_step, start_v, start_w, tau_refractive, activity_mode, num_objects, kernel_values));
 		}
 
@@ -284,7 +305,14 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 			double time_step = interpretValueAsDouble(std::string(algorithm.child_value("TimeStep")));
 			std::string activity_mode = interpretValueAsString(std::string(algorithm.attribute("ratemethod").value()));
 
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::GridSomaDendriteAlgorithm(model_filename, transform_filename, time_step, start_v, start_w, tau_refractive, activity_mode));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::GridSomaDendriteAlgorithm(model_filename, transform_filename, time_step, start_v, start_w, tau_refractive, activity_mode, kernel_values));
 		}
 
 		if (std::string("GridJumpAlgorithm") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {
@@ -317,7 +345,15 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 				matrix_files.push_back(interpretValueAsString(std::string(matrix_file.child_value())));
 			}
 
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::MeshAlgorithmCustom<TwoDLib::MasterOdeint>(model_filename, matrix_files, time_step, tau_refractive, activity_mode, num_objects));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
+
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::MeshAlgorithmCustom<TwoDLib::MasterOdeint>(model_filename, matrix_files, time_step, tau_refractive, activity_mode, num_objects, kernel_values));
 		}
 
 		if (std::string("RateFunctor") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {
@@ -327,7 +363,13 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 			std::cout << "Found RateFunctor (Using a RateAlgorithm) " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("expression")));
-			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
 			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new MPILib::RateAlgorithm<MPILib::CustomConnectionParameters>(rate, kernel_values));
 		}
 
@@ -338,7 +380,13 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 			std::cout << "Found RateAlgorithm " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("rate")));
-			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
 			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new MPILib::RateAlgorithm<MPILib::CustomConnectionParameters>(rate, kernel_values));
 		}
 
@@ -367,7 +415,13 @@ void SimulationParserCPU< MPILib::DelayedConnection>::parseXMLAlgorithms(pugi::x
 				matrix_files.push_back(interpretValueAsString(std::string(matrix_file.child_value())));
 			}
 
-			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
 			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new TwoDLib::MeshAlgorithm<MPILib::DelayedConnection, TwoDLib::MasterOdeint>(model_filename, matrix_files, time_step, tau_refractive, activity_mode, 0, kernel_values));
 		}
 
@@ -394,7 +448,13 @@ void SimulationParserCPU< MPILib::DelayedConnection>::parseXMLAlgorithms(pugi::x
 			std::cout << "Found RateFunctor (Using a RateAlgorithm) " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("expression")));
-			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
 			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new MPILib::RateAlgorithm<MPILib::DelayedConnection>(rate, kernel_values));
 		}
 
@@ -405,7 +465,13 @@ void SimulationParserCPU< MPILib::DelayedConnection>::parseXMLAlgorithms(pugi::x
 			std::cout << "Found RateAlgorithm " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("rate")));
-			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
 			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::DelayedConnection>>(new MPILib::RateAlgorithm<MPILib::DelayedConnection>(rate, kernel_values));
 		}
 	}
@@ -444,7 +510,13 @@ void SimulationParserCPU<double>::parseXMLAlgorithms(pugi::xml_document& doc,
 			std::cout << "Found RateFunctor (Using a RateAlgorithm) " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("expression")));
-			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
 			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<double>>(new MPILib::RateAlgorithm<double>(rate, kernel_values));
 		}
 
@@ -455,7 +527,13 @@ void SimulationParserCPU<double>::parseXMLAlgorithms(pugi::xml_document& doc,
 			std::cout << "Found RateAlgorithm " << algorithm_name << ".\n";
 
 			double rate = interpretValueAsDouble(std::string(algorithm.child_value("rate")));
-			std::vector<double> kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			std::vector<double> kernel_values;
+			if (algorithm.child("kernel")) {
+				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
+			}
 			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<double>>(new MPILib::RateAlgorithm<double>(rate, kernel_values));
 		}
 

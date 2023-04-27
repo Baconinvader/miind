@@ -236,11 +236,12 @@ bool SimulationParserGPU<WeightType>::addGridAlgorithmGroupNode(pugi::xml_docume
 			double start_x = SimulationParserCPU<WeightType>::interpretValueAsDouble(std::string(algorithm.attribute("start_x").value()));
 			double time_step = SimulationParserCPU<WeightType>::interpretValueAsDouble(std::string(algorithm.child_value("TimeStep")));
 
-			//TODO remove this note
-			//NOTE: don't put this after pugi::xml_node model = doc.first_child();
 			std::vector<double> kernel_values;
-			for (double kern : SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"))) {
-				kernel_values.push_back(kern);
+			if (algorithm.child("kernel")) {
+				kernel_values = SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
 			}
 
 			// todo: Check time_step matches network time step
@@ -290,11 +291,12 @@ bool SimulationParserGPU<WeightType>::addMeshAlgorithmGroupNode(pugi::xml_docume
 			}
 
 
-			//TODO remove this note
-			//NOTE: don't put this after pugi::xml_node model = doc.first_child();
 			std::vector<double> kernel_values;
-			for (double kern : SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"))) {
-				kernel_values.push_back(kern);
+			if (algorithm.child("kernel")) {
+				kernel_values = SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
 			}
 
 			// todo: Check time_step matches network time step
@@ -326,11 +328,12 @@ bool SimulationParserGPU<WeightType>::addRateFunctorNode(pugi::xml_document& doc
 
 			double rate = SimulationParserCPU<WeightType>::interpretValueAsDouble(std::string(algorithm.child_value("expression")));
 
-			//TODO remove this note
-			//NOTE: don't put this after pugi::xml_node model = doc.first_child();
 			std::vector<double> kernel_values;
-			for (double kern : SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"))) {
-				kernel_values.push_back(kern);
+			if (algorithm.child("kernel")) {
+				kernel_values = SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(algorithm.child("kernel"));
+			}
+			else {
+				kernel_values = { 1.0 };
 			}
 
 			rate_functor rf(rate);

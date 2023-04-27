@@ -47,6 +47,37 @@ namespace MPILib {
 		;
 
 		/**
+		*Check to make sure a given vector of kernel values is valid
+		*/
+		static bool checkKernel(std::vector<double> kernel) {
+			double kernel_sum = 0.0;
+
+			if (kernel.empty()) {
+				std::cout << "Warning: kernel has been declared using <kernel></kernel> but has not been specified. Specify kernel values using <value></value> XML." << std::endl;
+				return false;
+			}
+
+
+			for (double value : kernel) {
+				kernel_sum += value;
+			}
+
+			double tolerance = 0.000001;
+			if (abs(kernel_sum - 1.0) > tolerance) {
+				if (kernel_sum > 1.0) {
+					std::cout << "Warning: kernel weights sum to " << kernel_sum << " instead of 1.0, which will likely lead to errors" << std::endl;
+				}
+				else {
+					std::cout << "Warning: kernel weights sum to " << kernel_sum << " instead of 1.0, which will likely lead to errors" << std::endl;
+				}
+				return false;
+			}
+			else {
+				return true;
+			}
+		}
+
+		/**
 		 * Cloning operation, to provide each DynamicNode with its own
 		 * Algorithm instance. Clients use the naked pointer at their own risk.
 		 */

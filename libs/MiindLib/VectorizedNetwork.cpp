@@ -9,10 +9,10 @@ using namespace MiindLib;
 bool checkKernel(std::vector<double> kernel) {
     double kernel_sum = 0.0;
 
-    /*if (kernel.empty()) {
+    if (kernel.empty()) {
         std::cout << "Warning: kernel has been declared using <kernel></kernel> but has not been specified. Specify kernel values using <value></value> XML." << std::endl;
         return false;
-    }*/
+    }
 
     for (double value : kernel) {
         kernel_sum += value;

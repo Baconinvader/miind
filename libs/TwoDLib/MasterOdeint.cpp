@@ -90,7 +90,6 @@ void MasterOdeint::Apply
 
 	boost::numeric::odeint::integrate_adaptive(boost::numeric::odeint::make_controlled< error_stepper_type >(1.0e-6, 1.0e-6), std::ref(*this),
 		_sys._vec_mass, 0.0, t_step, 1e-4);
-
 }
 
 void MasterOdeint::ApplyFinitePoisson
@@ -162,7 +161,7 @@ void MasterOdeint::operator()(const vector<double>& vec_mass, vector<double>& dy
 			_rate = rates[i_mesh][irate];
 
 
-			if (_p_vec_kernels->size() > irate && _p_vec_kernels->at(irate).size() > 1) { //kernel
+			if (_p_vec_kernels->size() > irate && _p_vec_kernels->at(irate).size() > 0) { //kernel
 				for (unsigned int k = 0; k < _p_vec_kernels->at(irate).size(); k++) {
 					mass = (k == 0) ? &vec_mass : &(_sys._vec_masses.at(k));
 

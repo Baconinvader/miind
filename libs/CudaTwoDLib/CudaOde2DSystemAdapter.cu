@@ -128,7 +128,6 @@ CudaOde2DSystemAdapter::CudaOde2DSystemAdapter
 	this->FillRefractoryTimes(group.Tau_ref());
 	this->FillResetMap(group.MeshObjects(), group.MapReset());
 
-
 	this->FillSpikesAndSpikeCounts();
 	this->EstimateGridThresholdsResetsRefractories(group.MeshObjects(), group.MapReset(), group.Tau_ref());
 
@@ -214,6 +213,9 @@ void CudaOde2DSystemAdapter::FillMapData() {
 void CudaOde2DSystemAdapter::DeleteMass()
 {
 	cudaFree(_mass);
+	for (fptype* history : _mass_histories) {
+		cudaFree(history);
+	}
 }
 
 void CudaOde2DSystemAdapter::DeleteMapData()
@@ -254,7 +256,6 @@ void CudaOde2DSystemAdapter::FillMass(unsigned int histories_count)
 	checkCudaErrors(cudaMemcpy(_mass, &_hostmass[0], _n * sizeof(fptype), cudaMemcpyHostToDevice));
 
 	//TODO, replace for loops with foreach or unsigned int
-	//TODO, cuda malloc 3D?
 	for (unsigned int m = 0; m < histories_count; m++) {
 		fptype* mass;
 		checkCudaErrors(cudaMalloc((fptype**)&mass, _n * sizeof(fptype)));
@@ -291,7 +292,6 @@ fptype CudaOde2DSystemAdapter::SumMass(int history_index) {
 	return res;
 }
 
-
 void CudaOde2DSystemAdapter::TransferFiniteObjects() {
 	if (_group.NumObjects() == 0)
 		return;
@@ -312,8 +312,6 @@ void CudaOde2DSystemAdapter::DeleteFiniteVectors()
 	cudaFree(_vec_objects_refract_index);
 
 }
-
-
 
 void CudaOde2DSystemAdapter::Validate() const
 {

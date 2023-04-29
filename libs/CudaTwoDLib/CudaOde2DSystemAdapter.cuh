@@ -54,7 +54,7 @@ namespace CudaTwoDLib {
 			TwoDLib::Ode2DSystemGroup& group, // The group must already be initialized. This will be checked and an exception will be thrown if it is suspected this has not happened
 			double network_time_step,
 			unsigned int mesh_objects_start_index = 0,
-			std::vector< std::vector<double> > kernels = { {1.0} } //TODO rename this?
+			std::vector< std::vector<double> > kernels = {}
 		);
 
 
@@ -103,8 +103,6 @@ namespace CudaTwoDLib {
 
 		void updateFiniteObjects();
 
-
-
 		void TransferFiniteObjects();
 
 		void updateRefractory();
@@ -127,13 +125,7 @@ namespace CudaTwoDLib {
 
 		TwoDLib::Ode2DSystemGroup& getGroup() { return _group; }
 
-		//TODO make private
-		std::vector<fptype*> _mass_histories;
 
-		//dbltype** 
-		vector<dbltype*> _vec_vec_kernels;
-
-		vector<vector<double>> _kernels;
 	private:
 
 		CudaOde2DSystemAdapter(const CudaOde2DSystemAdapter&);
@@ -184,6 +176,11 @@ namespace CudaTwoDLib {
 
 		fptype* _mass;
 
+		std::vector<fptype*> _mass_histories;
+
+		vector<dbltype*> _vec_vec_kernels;
+
+		vector<vector<double>> _kernels;
 
 		std::vector<fptype> _hostmass;
 		inttype* _map;
@@ -211,7 +208,6 @@ namespace CudaTwoDLib {
 		std::vector<fptype> _host_vec_objects_refract_times;
 		inttype* _vec_objects_refract_index;
 		std::vector<inttype> _host_vec_objects_refract_index;
-
 
 		std::vector<fptype> _thresholds;
 		std::vector<fptype> _resets;

@@ -256,30 +256,50 @@ void MasterGrid::operator()(const vector<double>& vec_mass, vector<double>& dydt
         int offset_2 = vec_eff[irate] > 0 ? -(offset + 1) : (offset + 1);
 
         const std::vector<double>* mass = &vec_mass;
-        if (_p_vec_kernels->size() > irate && _p_vec_kernels->at(irate).size() > 0) { //kernel
-            for (unsigned int k = 0; k < _p_vec_kernels->at(irate).size(); k++) {
-                mass = (k == 0) ? &vec_mass : &(_sys._vec_masses.at(k));
 
-                // it is only the matrices that need to be mapped
-                MVGrid
-                (
-                    dydt,
-                    *mass,
-                    rate * _p_vec_kernels->at(irate).at(k),
-                    stays,
-                    goes,
-                    offset_1,
-                    offset_2
-                );
-            }
-        }
-        else {
+
+
+        unsigned int k = 0;
+        unsigned int kern_size = _p_vec_kernels->at(irate).size();
+        int size_difference = (kern_size > _sys._vec_masses.size()) ? kern_size - _sys._vec_masses.size() : 0;
+
+        // no kernel available?
+        bool no_kernel = (kern_size == 0) || (_p_vec_kernels->size() <= irate);
+
+        // if the kernel size is greater than the number of histories available, then we pad with the current mass
+        // so if a kernel of size 5 only had 3 available histories, the first 2 kernel weights are applied with the current mass
+        double kern_val;
+        while (k < size_difference || no_kernel) {
+            kern_val = (no_kernel) ? 1.0 : _p_vec_kernels->at(irate).at(k);
+
+
             // it is only the matrices that need to be mapped
             MVGrid
             (
                 dydt,
                 vec_mass,
-                rate,
+                rate * kern_val,
+                stays,
+                goes,
+                offset_1,
+                offset_2
+            );
+
+            k++;
+
+            if (no_kernel)
+                break;
+        }
+
+        for (k; k < kern_size; k++) {
+            mass = (k == size_difference) ? &vec_mass : &(_sys._vec_masses.at(k - size_difference));
+
+            // it is only the matrices that need to be mapped
+            MVGrid
+            (
+                dydt,
+                *mass,
+                rate * _p_vec_kernels->at(irate).at(k),
                 stays,
                 goes,
                 offset_1,

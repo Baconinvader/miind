@@ -109,7 +109,7 @@ Ode2DSystemGroup::Ode2DSystemGroup
 	_vec_vs(MeshVs(mesh_list)),
 	_vec_tau_refractive(vec_tau_refractive),
 	_vec_mass(InitializeMass()),
-	_vec_masses(InitializeMasses(1)),
+	_vec_masses(InitializeMasses(0)),
 	_vec_area(InitializeArea(mesh_list)),
 	_t(0),
 	_fs(std::vector<MPILib::Rate>(mesh_list.size(), 0.0)),
@@ -473,6 +473,25 @@ void Ode2DSystemGroup::EvolveWithoutMeshUpdate() {
 	_t += 1;
 	for (MPILib::Rate& f : _fs)
 		f = 0.;
+}
+
+void Ode2DSystemGroup::ShiftHistories(unsigned int count) {
+	std::cout << "longest kernel " << count << std::endl;
+
+	if (_vec_masses.size() > 0) {
+		//shift histories
+		for (int history = _vec_masses.size() - 1; history > 0; history--) {
+			_vec_masses.at(history) = _vec_masses.at(history - 1);
+		}
+		//add most recent history
+		_vec_masses.at(0) = _vec_mass;
+	}
+
+	if (_vec_masses.size() < count) {
+		std::cout << "changing _sys vec masses size from " << _vec_masses.size();
+		_vec_masses.insert(_vec_masses.begin(), _vec_mass);
+		std::cout << " to " << _vec_masses.size() << std::endl;
+	}
 }
 
 void Ode2DSystemGroup::ShiftFiniteObjectHistories() {

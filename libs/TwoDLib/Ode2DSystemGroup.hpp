@@ -120,7 +120,10 @@ namespace TwoDLib {
 
 		void EvolveWithoutMeshUpdate();
 
-		//! Add a new finite object to the top history list, and shift the rest of the histories down
+		//! Add a new history to the list of stored histories, and shift the rest of the histories down
+		void ShiftHistories(unsigned int count);
+
+		//! Add a new finite object to the top of history list, and shift the rest of the histories down
 		void ShiftFiniteObjectHistories();
 
 		//! Dump the current density profile (0), or the mass profile (1) to an output stream

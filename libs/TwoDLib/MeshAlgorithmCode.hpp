@@ -386,47 +386,21 @@ namespace TwoDLib {
 		}
 
 
-		// the number of mass histories to store is based on kernelVector
-		unsigned int longest_kernel_size = 1;
-		for (std::vector<double> kern : kernelVector) {
-			if (kern.size() > longest_kernel_size)
-				longest_kernel_size = kern.size();
-		}
-		std::cout << "longest kernel " << longest_kernel_size << std::endl;
-
-		if (_sys._vec_masses.size() < longest_kernel_size) {
-			std::cout << "changing _sys vec masses size from " << _sys._vec_masses.size();
-
-			// at least one incoming activity has a kernel with size greater than the amount of histories stored in _sys
-			// so increase size of _sys
-			vector<double> back_mass;
-			if (_sys._vec_masses.size() == 0) {
-				back_mass = _sys._vec_mass;
-			}
-			else {
-				back_mass = _sys._vec_masses.back();
-			}
-
-			while (_sys._vec_masses.size() < longest_kernel_size) {
-				_sys._vec_masses.push_back(back_mass);
-			}
-
-			std::cout << " to " << _sys._vec_masses.size() << std::endl;
-		}
-
-		if (_sys._vec_masses.size() > 0) {
-			//shift histories
-			for (int history = _sys._vec_masses.size() - 1; history > 0; history--) {
-				_sys._vec_masses.at(history) = _sys._vec_masses.at(history - 1);
-			}
-			//add most recent history
-			_sys._vec_masses.at(0) = _sys._vec_mass;
-		}
+		_sys.RedistributeProbability(_n_steps);
 
 		// master equation
 		_p_master->Apply(_n_steps * _dt, vec_rates, _vec_map, kernelVector);
 
-		_sys.RedistributeProbability(_n_steps);
+
+		// the number of mass histories to store is based on kernelVector
+		unsigned int longest_kernel_size = 0;
+		for (std::vector<double> kern : kernelVector) {
+			if (kern.size() > longest_kernel_size)
+				longest_kernel_size = kern.size();
+		}
+		_sys.ShiftHistories(longest_kernel_size);
+
+
 
 		_t_cur += _n_steps * _dt;
 		_rate = (_sys.*_sysfunction)()[0];

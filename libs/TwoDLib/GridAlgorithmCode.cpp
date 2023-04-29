@@ -275,38 +275,14 @@ namespace TwoDLib {
 		}
 
 		// the number of mass histories to store is based on kernelVector
-		unsigned int longest_kernel_size = 1;
+		unsigned int longest_kernel_size = 0;
 		for (std::vector<double> kern : kernelVector) {
 			if (kern.size() > longest_kernel_size)
 				longest_kernel_size = kern.size();
 		}
+		_sys.ShiftHistories(longest_kernel_size);
 
-		if (_sys._vec_masses.size() < longest_kernel_size) {
-			// at least one incoming activity has a kernel with size greater than the amount of histories stored in _sys
-			// so increase size of _sys
-			vector<double> back_mass;
-			if (_sys._vec_masses.size() == 0) {
-				back_mass = _sys._vec_mass;
-			}
-			else {
-				back_mass = _sys._vec_masses.back();
-			}
-
-			while (_sys._vec_masses.size() < longest_kernel_size) {
-				_sys._vec_masses.push_back(back_mass);
-			}
-
-		}
-
-		if (_sys._vec_masses.size() > 0) {
-			//shift histories
-			for (int history = _sys._vec_masses.size() - 1; history > 0; history--) {
-				_sys._vec_masses.at(history) = _sys._vec_masses.at(history - 1);
-			}
-			//add most recent history
-			_sys._vec_masses.at(0) = _sys._vec_mass;
-		}
-
+		std::cout << "INCOMING VECTOR GRID - " << kernelVector.size() << std::endl;
 
 		unsigned int i = 0;
 		for (vector<double> kern : kernelVector) {

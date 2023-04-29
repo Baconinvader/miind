@@ -181,8 +181,8 @@ namespace MPILib {
 		* The kernel of the node
 		* @return The kernel of the node
 		*/
-		virtual std::vector<double> getKernel() const {
-			return { 1.0 };
+		virtual std::vector<double>& getKernel() {
+			return _default_kernel;
 		};
 
 		/**
@@ -220,6 +220,15 @@ namespace MPILib {
 		{
 			return grid.getStateSize();
 		}
+
+	private:
+
+		// getKernel() returns a REFERENCE to a kernel (to avoid performance impact of copying)
+		// so we need to store a default kernel somewhere
+		/**
+		* Default kernel, a reference to which is returned by getKernel() if not overridden
+		* */
+		std::vector<double> _default_kernel = { 1.0 };
 
 	};
 

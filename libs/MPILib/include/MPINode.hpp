@@ -101,15 +101,6 @@ namespace MPILib {
 		void addPrecursor(NodeId nodeId, const Weight& weight, NodeType nodeType);
 
 		/**
-		 * Add a precursor to the current node
-		 * @param nodeId NodeId the id of the precursor
-		 * @param weight the weight of the connection
-		 * @param nodeType the nodeType of the precursor
-		 * @param kernel used in the precursor node
-		 */
-		void addPrecursor(NodeId nodeId, const Weight& weight, NodeType nodeType, std::vector<double> kernel);
-
-		/**
 		 * Add a successor to the current node
 		 * @param nodeId NodeId the id of the successor
 		 */
@@ -166,7 +157,7 @@ namespace MPILib {
 		/**
 		* Get the kernel from this node's Algorithm. Used by MPINetwork for setting precursors
 		*/
-		std::vector<double> getKernel() const;
+		std::vector<double>& getKernel();
 
 		/**
 		 * Expose current activity

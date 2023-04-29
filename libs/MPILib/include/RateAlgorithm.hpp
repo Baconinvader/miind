@@ -79,7 +79,7 @@ namespace MPILib {
 		* The kernel of the node
 		* @return The kernel of the node
 		*/
-		virtual std::vector<double> getKernel() const;
+		virtual std::vector<double>& getKernel();
 
 		virtual AlgorithmGrid getGrid(NodeId, bool b_state = true) const;
 

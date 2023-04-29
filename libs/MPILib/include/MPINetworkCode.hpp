@@ -138,11 +138,8 @@ namespace MPILib {
 		// Make sure that the second node exist and then set the precursor
 		if (_nodeDistribution.isLocalNode(second)) {
 			if (_localNodes.count(second) > 0) {
-
-				auto tempNode = _localNodes.find(first)->second;
-
 				_localNodes.find(second)->second.addPrecursor(first, weight,
-					nodeIdsType_[second], tempNode.getKernel());
+					nodeIdsType_[second]);
 			}
 			else {
 				std::stringstream tempStream;

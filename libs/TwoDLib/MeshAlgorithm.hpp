@@ -87,7 +87,7 @@ namespace TwoDLib {
 		* The kernel of the node
 		* @return The kernel of the node
 		*/
-		virtual std::vector<double> getKernel() const { return _vec_kernel; }
+		virtual std::vector<double>& getKernel() { return _vec_kernel; }
 
 		/**
 		 * Stores the algorithm state in a Algorithm Grid

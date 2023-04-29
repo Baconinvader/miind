@@ -148,25 +148,22 @@ namespace MPILib {
 		return _external_precurser_count;
 	}
 
-	template<class Weight, class NodeDistribution>
-	void MPINode<Weight, NodeDistribution>::addPrecursor(NodeId nodeId,
-		const Weight& weight, NodeType nodeType) {
-		addPrecursor(nodeId, weight, nodeType, { 1.0 });
-
-	}
-
 	// add a new local precursor along with a kernel
 	template<class Weight, class NodeDistribution>
 	void MPINode<Weight, NodeDistribution>::addPrecursor(NodeId nodeId,
-		const Weight& weight, NodeType nodeType, const std::vector<double> kernel) {
+		const Weight& weight, NodeType nodeType) {
+
+		auto tempNode = _rLocalNodes.find(nodeId)->second;
 
 		_precursors.push_back(nodeId);
 		_precursorTypes.push_back(nodeType);
 		_weights.push_back(weight);
 		//make sure that _precursorStates is big enough to store the data
 		_precursorActivity.resize(_precursors.size());
-		_precursor_kernels.push_back(kernel);
+		_precursor_kernels.push_back(tempNode.getKernel());
 
+
+		std::cout << _name << "[" << _nodeId << ", " << _nodeType << "]" << " adding node " << tempNode._name << "[" << tempNode._nodeId << ", " << tempNode._nodeType << "]" << " with kernel: " << tempNode.getKernel().size() << std::endl;
 
 	}
 
@@ -265,7 +262,7 @@ namespace MPILib {
 	}
 
 	template<class Weight, class NodeDistribution>
-	std::vector<double> MPINode<Weight, NodeDistribution>::getKernel() const {
+	std::vector<double>& MPINode<Weight, NodeDistribution>::getKernel() {
 		return _pAlgorithm->getKernel();
 	}
 

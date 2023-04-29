@@ -77,7 +77,7 @@ namespace MPILib {
 	}
 
 	template<class Weight>
-	vector<double> RateAlgorithm<Weight>::getKernel() const {
+	std::vector<double>& RateAlgorithm<Weight>::getKernel() {
 		return _vec_kernel;
 	}
 

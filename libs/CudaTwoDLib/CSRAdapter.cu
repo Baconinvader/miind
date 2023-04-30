@@ -426,16 +426,17 @@ void CSRAdapter::CalculateMeshGridDerivative(const std::vector<inttype>& vecinde
 
     for (inttype m = 0; m < vecstays.size(); m++)
     {
-        // be careful to use this block size
-        inttype numBlocks = (_nr_rows[vecindex[m]] + _blockSize - 1) / _blockSize;
         if (kernels[vecindex[m]].size() > 0) {
             for (int i = 0; i < kernels[vecindex[m]].size(); i++) {
-
+                // be careful to use this block size
+                inttype numBlocks = (_nr_rows[vecindex[m]] + _blockSize - 1) / _blockSize;
                 CudaCalculateGridDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[m]] >> > (_nr_rows[vecindex[m]], vecrates[m] * kernels[vecindex[m]][i], vecstays[m], vecgoes[m], vecoff1s[m], vecoff2s[m], _dydt, _group._mass_histories[i], _offsets[vecindex[m]]);
             }
         }
         else {
             //no kernel
+            // be careful to use this block size
+            inttype numBlocks = (_nr_rows[vecindex[m]] + _blockSize - 1) / _blockSize;
             CudaCalculateGridDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[m]] >> > (_nr_rows[vecindex[m]], vecrates[m], vecstays[m], vecgoes[m], vecoff1s[m], vecoff2s[m], _dydt, _group._mass, _offsets[vecindex[m]]);
         }
     }
@@ -445,17 +446,19 @@ void CSRAdapter::CalculateMeshGridDerivative(const std::vector<inttype>& vecinde
     //kernel
     for (int n = vecstays.size(); n < vecrates.size(); n++)
     {
-        inttype mat_index = _grid_transforms.size() + (n - vecstays.size());
-        // be careful to use this block size
-        inttype numBlocks = (_nr_rows[mat_index] + _blockSize - 1) / _blockSize;
-
         if (kernels[vecindex[n]].size() > 0) {
             for (int i = 0; i < kernels[vecindex[n]].size(); i++) {
+                inttype mat_index = _grid_transforms.size() + (n - vecstays.size());
+                // be careful to use this block size
+                inttype numBlocks = (_nr_rows[mat_index] + _blockSize - 1) / _blockSize;
                 CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n] * kernels[vecindex[n]][i], _dydt, _group._mass_histories[i], _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mat_index]);
             }
         }
         else {
             //no kernel
+            inttype mat_index = _grid_transforms.size() + (n - vecstays.size());
+            // be careful to use this block size
+            inttype numBlocks = (_nr_rows[mat_index] + _blockSize - 1) / _blockSize;
             CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n], _dydt, _group._mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mat_index]);
         }
     }
@@ -513,25 +516,34 @@ void CSRAdapter::CalculateMeshGridDerivativeWithEfficacy(const std::vector<intty
         // be careful to use this block size
         inttype numBlocks = (_nr_rows[mat_index] + _blockSize - 1) / _blockSize;
 
-        for (unsigned int i = 0; i < kernels.size(); i++) {
-            std::cout << i << ": " << kernels.at(i).size() << ", ";
-        }
-        std::cout << std::endl;
+        unsigned int k = 0;
+        unsigned int kern_size = kernels[in_mesh_m].size();
+        int size_difference = (kern_size > _group._mass_histories.size()) ? kern_size - _group._mass_histories.size() : 0;
 
-        //TODO make this more parallel
-        if (kernels[in_mesh_m].size() > 0) {
-            for (int i = 0; i < kernels[in_mesh_m].size(); i++) {
-                //std::cout << "sanity check: " << vecrates[n] << " * " << kernels[mesh_m][i] << " = " << vecrates[n] * kernels[mesh_m][i] << " diff " << ((vecrates[n] * kernels[mesh_m][i]) - vecrates[n]) << std::endl;
+        // no kernel available?
+        bool no_kernel = (kern_size == 0) || (kernels.size() <= in_mesh_m);
 
-                fptype* deriv_mass = (i == 0) ? _group._mass : _group._mass_histories[i];
-                CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n] * kernels[in_mesh_m][i], _dydt, deriv_mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mesh_m]);
-                cudaDeviceSynchronize();
-            }
-        }
-        else {
-            CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n], _dydt, _group._mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mesh_m]);
+        // if the kernel size is greater than the number of histories available, then we pad with the current mass
+        // so if a kernel of size 5 only had 3 available histories, the first 2 kernel weights are applied with the current mass
+        double kern_val;
+        while (k < size_difference || no_kernel) {
+            kern_val = (no_kernel) ? 1.0 : kernels[in_mesh_m][k];
+
+            CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n] * kern_val, _dydt, _group._mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mesh_m]);
+
+            k++;
+
+            if (no_kernel)
+                break;
         }
 
+        fptype* deriv_mass;
+        for (k; k < kern_size; k++) {
+            deriv_mass = (k == size_difference) ? _group._mass : _group._mass_histories[k - size_difference];
+
+            CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n] * kernels[in_mesh_m][k], _dydt, deriv_mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mesh_m]);
+
+        }
 
     }
 
@@ -539,25 +551,7 @@ void CSRAdapter::CalculateMeshGridDerivativeWithEfficacy(const std::vector<intty
 
 }
 
-void CSRAdapter::ShiftHistories()
-{
-    //TODO do we redistribute probabilities before
-    if (_group._mass_histories.size() > 0) {
-        //probability masses
-        //rotate histories
-        fptype* temp_mass = _group._mass_histories.at(_group._mass_histories.size() - 1);
 
-        for (int history = _group._mass_histories.size() - 1; history > 0; history--) {
-            _group._mass_histories.at(history) = _group._mass_histories.at(history - 1);
-        }
-        _group._mass_histories.at(0) = temp_mass;
-
-        //add history
-        checkCudaErrors(cudaMemcpy(_group._mass_histories.at(0), _group._mass, _group._n * sizeof(fptype), cudaMemcpyDeviceToDevice));
-
-
-    }
-}
 
 void CSRAdapter::SingleTransformStep()
 {

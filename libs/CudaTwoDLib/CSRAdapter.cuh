@@ -83,8 +83,6 @@ namespace CudaTwoDLib {
 
 		void SingleTransformStepFiniteSize();
 
-		void ShiftHistories();
-
 		void AddDerivative();
 
 		void IzhTest(inttype* spikes);

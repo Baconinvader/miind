@@ -103,6 +103,8 @@ namespace CudaTwoDLib {
 
 		void updateFiniteObjects();
 
+		void ShiftHistories(unsigned int count);
+
 		void TransferFiniteObjects();
 
 		void updateRefractory();

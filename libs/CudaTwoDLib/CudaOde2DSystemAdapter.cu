@@ -216,6 +216,9 @@ void CudaOde2DSystemAdapter::DeleteMass()
 	for (fptype* history : _mass_histories) {
 		cudaFree(history);
 	}
+
+	for (dbltype* kernel_pointer : _vec_vec_kernels)
+		cudaFree(kernel_pointer);
 }
 
 void CudaOde2DSystemAdapter::DeleteMapData()
@@ -231,11 +234,7 @@ CudaOde2DSystemAdapter::~CudaOde2DSystemAdapter()
 	for (unsigned int m = 0; m < _refractory_mass_local.size(); m++)
 		cudaFree(_refractory_mass[m]);
 
-	//TODO, replace for loops with foreach or unsigned int
-	unsigned int histories_count = 5;
-	for (unsigned int m = 0; m < histories_count; m++) {
-		cudaFree(_mass_histories[m]);
-	}
+	
 
 	cudaFree(_spikes);
 
@@ -255,12 +254,55 @@ void CudaOde2DSystemAdapter::FillMass(unsigned int histories_count)
 	this->Validate();
 	checkCudaErrors(cudaMemcpy(_mass, &_hostmass[0], _n * sizeof(fptype), cudaMemcpyHostToDevice));
 
-	//TODO, replace for loops with foreach or unsigned int
-	for (unsigned int m = 0; m < histories_count; m++) {
+	/*for (unsigned int m = 0; m < histories_count; m++) {
 		fptype* mass;
 		checkCudaErrors(cudaMalloc((fptype**)&mass, _n * sizeof(fptype)));
 		checkCudaErrors(cudaMemcpy(mass, &_hostmass[0], _n * sizeof(fptype), cudaMemcpyHostToDevice));
 		_mass_histories.push_back(mass);
+	}*/
+}
+
+void CudaOde2DSystemAdapter::ShiftHistories(unsigned int count)
+{
+
+	if (_mass_histories.size() < count) {
+		fptype* mass;
+		checkCudaErrors(cudaMalloc((fptype**)&mass, _n * sizeof(fptype)));
+
+		_mass_histories.push_back(mass);
+	}
+
+	if (_mass_histories.size() > 0) {
+		//probability masses
+		//rotate histories
+
+		fptype* temp_mass = _mass_histories.at(_mass_histories.size() - 1);
+
+		for (int history = _mass_histories.size() - 1; history > 0; history--) {
+			_mass_histories.at(history) = _mass_histories.at(history - 1);
+		}
+		_mass_histories.at(0) = temp_mass;
+
+		//add history
+		//_mass_histories.at(0) = _mass;
+		checkCudaErrors(cudaMemcpy(_mass_histories.at(0), _mass, _n * sizeof(fptype), cudaMemcpyDeviceToDevice));
+
+		std::cout << "shifted [3] (" << _mass_histories.at(0) << "<-" << _mass << ") (" << _mass_histories.size() << ") " << SumMass(0) << std::endl;
+		/*int i = 0;
+		for (fptype* hist : _group._mass_histories) {
+			std::cout << "h" << i << ": " << hist << " - " << _group.SumMass(i) << std::endl;
+
+			i++;
+		}*/
+
+
+
+		/*for (unsigned int m = 0; m < histories_count; m++) {
+
+			checkCudaErrors(cudaMemcpy(mass, &_hostmass[0], _n * sizeof(fptype), cudaMemcpyHostToDevice));
+			_mass_histories.push_back(mass);
+		}*/
+
 	}
 }
 
@@ -292,6 +334,7 @@ fptype CudaOde2DSystemAdapter::SumMass(int history_index) {
 	return res;
 }
 
+
 void CudaOde2DSystemAdapter::TransferFiniteObjects() {
 	if (_group.NumObjects() == 0)
 		return;
@@ -310,6 +353,8 @@ void CudaOde2DSystemAdapter::DeleteFiniteVectors()
 	cudaFree(_vec_objects_to_index);
 	cudaFree(_vec_objects_refract_times);
 	cudaFree(_vec_objects_refract_index);
+
+	
 
 }
 

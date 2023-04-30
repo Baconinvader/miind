@@ -74,10 +74,11 @@ void VectorizedNetwork::addMeshNode(TwoDLib::Mesh mesh,
     _mesh_vec_vec_rev.push_back(vec_rev);
     _mesh_vec_vec_res.push_back(vec_res);
     _mesh_vec_tau_refractive.push_back(tau_refractive);
-    _num_mesh_objects.push_back(finite_size);
 
     checkKernel(vec_kernel_values);
     _vec_vec_kernel_values.push_back(vec_kernel_values);
+
+    _num_mesh_objects.push_back(finite_size);
 
 }
 
@@ -124,12 +125,7 @@ void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
     }
 
     // Figure out mass history count
-    //TODO make this better?
     unsigned int largest_history_count = 1;
-    //default kernel
-    if (_vec_vec_kernel_values.empty()) {
-        _vec_vec_kernel_values.push_back({ 1.0 });
-    }
 
     for (std::vector<double> vec_kernel : _vec_vec_kernel_values) {
         if (vec_kernel.size() > largest_history_count) {
@@ -167,9 +163,6 @@ void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
     // All grids/meshes must have the same timestep
     TwoDLib::MasterParameter par(static_cast<MPILib::Number>(ceil(_network_time_step / _vec_mesh[0].TimeStep())));
     _n_steps = par._N_steps;
-    std::cout << "Using master solver n_steps = " << _master_steps << "\n";
-
-
 
     _group_adapter = new CudaTwoDLib::CudaOde2DSystemAdapter(*(_group), _network_time_step, 0, _vec_vec_kernel_values);
 }
@@ -735,7 +728,6 @@ void VectorizedNetwork::setupLoop(bool write_displays, TwoDLib::Display* display
     for (unsigned int i = 0; i < _mesh_connections.size(); i++) {
         _connection_out_group_mesh.push_back(_node_id_to_group_mesh[_mesh_connections[i]._out]);
         _connection_in.push_back(_mesh_connections[i]._in);
-        std::cout << "CONNECTION IN:" << _mesh_connections[i]._in << ", pushing back " << _node_id_to_group_mesh[_mesh_connections[i]._in] << std::endl;
 
         _csrs.push_back(TwoDLib::CSRMatrix(*(_mesh_connections[i]._transition), *(_group), _node_id_to_group_mesh[_mesh_connections[i]._out]));
         // _csrs contains all the grid transforms first (see initOde2DSystem)
@@ -874,18 +866,24 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
 
     for (MPILib::Index i_part = 0; i_part < _master_steps; i_part++) {
         _csr_adapter->ClearDerivative();
-        _csr_adapter->CalculateMeshGridDerivativeWithEfficacy(_connection_out_group_mesh, _connection_in, rates, _vec_vec_kernel_values);
+        _csr_adapter->CalculateMeshGridDerivativeWithEfficacy(_connection_out_group_mesh, _connection_in, rates);
         _csr_adapter->AddDerivative();
     }
 
+    unsigned int largest_kernel = 0;
+    for (vector<double> kern : _vec_vec_kernel_values) {
+        if (kern.size() > largest_kernel) {
+            largest_kernel = kern.size();
+        }
+    }
 
-    _csr_adapter->ShiftHistories();
+    _group_adapter->ShiftHistories(largest_kernel);
 
     //TODO move this?
     _group_adapter->ShiftFiniteHistories();
 
 
-    _csr_adapter->CalculateMeshGridDerivativeWithEfficacyFinite(_connection_out_group_mesh, rates, _effs, _grid_cell_widths, _grid_cell_offsets, _vec_mesh[0].TimeStep(), _vec_vec_kernel_values);
+    _csr_adapter->CalculateMeshGridDerivativeWithEfficacyFinite(_connection_out_group_mesh, rates, _effs, _grid_cell_widths, _grid_cell_offsets, _vec_mesh[0].TimeStep());
 
     _group_adapter->RedistributeFiniteObjects(_mesh_meshes, _vec_mesh[0].TimeStep(), _n_steps, _csr_adapter->getCurandState());
     _group_adapter->RedistributeGridFiniteObjects(_grid_meshes, _n_steps, _csr_adapter->getCurandState());

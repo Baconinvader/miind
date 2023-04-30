@@ -128,8 +128,10 @@ CudaOde2DSystemAdapter::CudaOde2DSystemAdapter
 	this->FillRefractoryTimes(group.Tau_ref());
 	this->FillResetMap(group.MeshObjects(), group.MapReset());
 
+	this->FillFiniteVectors(largest_histories_count);
 	this->FillSpikesAndSpikeCounts();
 	this->EstimateGridThresholdsResetsRefractories(group.MeshObjects(), group.MapReset(), group.Tau_ref());
+
 
 }
 
@@ -213,12 +215,9 @@ void CudaOde2DSystemAdapter::FillMapData() {
 void CudaOde2DSystemAdapter::DeleteMass()
 {
 	cudaFree(_mass);
-	for (fptype* history : _mass_histories) {
+	for (fptype* history : _host_mass_histories) {
 		cudaFree(history);
 	}
-
-	for (dbltype* kernel_pointer : _vec_vec_kernels)
-		cudaFree(kernel_pointer);
 }
 
 void CudaOde2DSystemAdapter::DeleteMapData()
@@ -234,7 +233,12 @@ CudaOde2DSystemAdapter::~CudaOde2DSystemAdapter()
 	for (unsigned int m = 0; m < _refractory_mass_local.size(); m++)
 		cudaFree(_refractory_mass[m]);
 
-	
+	//TODO, replace for loops with foreach or unsigned int
+	unsigned int histories_count = 5;
+	for (unsigned int m = 0; m < histories_count; m++) {
+		cudaFree(_host_mass_histories[m]);
+	}
+	cudaFree(_mass_histories);
 
 	cudaFree(_spikes);
 
@@ -247,12 +251,17 @@ CudaOde2DSystemAdapter::~CudaOde2DSystemAdapter()
 
 void CudaOde2DSystemAdapter::FillMass(unsigned int histories_count)
 {
+
 	checkCudaErrors(cudaMalloc((fptype**)&_mass, _n * sizeof(fptype)));
 
 	for (inttype i = 0; i < _n; i++)
 		_hostmass[i] = _group.Mass()[i];
 	this->Validate();
 	checkCudaErrors(cudaMemcpy(_mass, &_hostmass[0], _n * sizeof(fptype), cudaMemcpyHostToDevice));
+
+	checkCudaErrors(cudaMalloc((fptype***)&_mass_histories, histories_count * sizeof(fptype*)));
+
+
 
 	/*for (unsigned int m = 0; m < histories_count; m++) {
 		fptype* mass;
@@ -264,46 +273,32 @@ void CudaOde2DSystemAdapter::FillMass(unsigned int histories_count)
 
 void CudaOde2DSystemAdapter::ShiftHistories(unsigned int count)
 {
+	if (_host_mass_histories.size() < count) {
+		fptype* new_mass;
+		checkCudaErrors(cudaMalloc((fptype**)&new_mass, _n * sizeof(fptype)));
 
-	if (_mass_histories.size() < count) {
-		fptype* mass;
-		checkCudaErrors(cudaMalloc((fptype**)&mass, _n * sizeof(fptype)));
-
-		_mass_histories.push_back(mass);
+		_host_mass_histories.push_back(new_mass);
 	}
 
-	if (_mass_histories.size() > 0) {
+	if (_host_mass_histories.size() > 0) {
 		//probability masses
 		//rotate histories
 
-		fptype* temp_mass = _mass_histories.at(_mass_histories.size() - 1);
+		fptype* temp_mass = _host_mass_histories.at(_host_mass_histories.size() - 1);
 
-		for (int history = _mass_histories.size() - 1; history > 0; history--) {
-			_mass_histories.at(history) = _mass_histories.at(history - 1);
+		for (int history = _host_mass_histories.size() - 1; history > 0; history--) {
+			_host_mass_histories.at(history) = _host_mass_histories.at(history - 1);
 		}
-		_mass_histories.at(0) = temp_mass;
+		_host_mass_histories.at(0) = temp_mass;
+		std::cout << "new top shifted " << _host_mass_histories.at(0) << std::endl;
 
 		//add history
-		//_mass_histories.at(0) = _mass;
-		checkCudaErrors(cudaMemcpy(_mass_histories.at(0), _mass, _n * sizeof(fptype), cudaMemcpyDeviceToDevice));
-
-		std::cout << "shifted [3] (" << _mass_histories.at(0) << "<-" << _mass << ") (" << _mass_histories.size() << ") " << SumMass(0) << std::endl;
-		/*int i = 0;
-		for (fptype* hist : _group._mass_histories) {
-			std::cout << "h" << i << ": " << hist << " - " << _group.SumMass(i) << std::endl;
-
-			i++;
-		}*/
-
-
-
-		/*for (unsigned int m = 0; m < histories_count; m++) {
-
-			checkCudaErrors(cudaMemcpy(mass, &_hostmass[0], _n * sizeof(fptype), cudaMemcpyHostToDevice));
-			_mass_histories.push_back(mass);
-		}*/
-
+		checkCudaErrors(cudaMemcpy(_host_mass_histories.at(0), _mass, _n * sizeof(fptype), cudaMemcpyDeviceToDevice));
 	}
+
+	//copy host histories to device
+	checkCudaErrors(cudaMemcpy(_mass_histories, _host_mass_histories.data(), _host_mass_histories.size() * sizeof(fptype*), cudaMemcpyHostToDevice));
+
 }
 
 fptype CudaOde2DSystemAdapter::SumMass(int history_index) {
@@ -322,7 +317,9 @@ fptype CudaOde2DSystemAdapter::SumMass(int history_index) {
 		CudaSumMass << <numBlocks, _blockSize >> > (_n, _mass, sum);
 	}
 	else {
-		CudaSumMass << <numBlocks, _blockSize >> > (_n, _mass_histories[history_index], sum);
+		if (_host_mass_histories.size() > 0) {
+			CudaSumMass << <numBlocks, _blockSize >> > (_n, _host_mass_histories[history_index], sum);
+		}
 	}
 
 	cudaThreadSynchronize();
@@ -354,8 +351,6 @@ void CudaOde2DSystemAdapter::DeleteFiniteVectors()
 	cudaFree(_vec_objects_refract_times);
 	cudaFree(_vec_objects_refract_index);
 
-	
-
 }
 
 void CudaOde2DSystemAdapter::Validate() const
@@ -381,6 +376,8 @@ void CudaOde2DSystemAdapter::EvolveOnDevice() {
 }
 
 void CudaOde2DSystemAdapter::EvolveOnDevice(std::vector<inttype>& meshes) {
+
+
 	_group.EvolveWithoutMeshUpdate();
 
 	for (unsigned int m : meshes) {
@@ -389,6 +386,8 @@ void CudaOde2DSystemAdapter::EvolveOnDevice(std::vector<inttype>& meshes) {
 		inttype numBlocks = (count + _blockSize - 1) / _blockSize;
 		evolveMap << <numBlocks, _blockSize >> > (count, _offsets[m], _map, _unmap, _map_cumulative_value, _map_strip_length_value, _group._T());
 	}
+
+
 }
 
 void CudaOde2DSystemAdapter::UpdateMapData() {
@@ -443,6 +442,7 @@ void CudaOde2DSystemAdapter::updateGroupMass()
 	for (inttype i = 0; i < _n; i++) {
 		_group.Mass()[i] = _hostmass[i];
 	}
+
 }
 
 void CudaOde2DSystemAdapter::updateFiniteObjects()
@@ -692,15 +692,22 @@ void CudaOde2DSystemAdapter::FillReversalMap
 
 void CudaOde2DSystemAdapter::RemapReversal()
 {
+
+
 	MapReversal << <1, 1 >> > (_n_rev, _rev_from, _rev_to, _rev_alpha, _mass, _map);
 	cudaDeviceSynchronize();
+
+
 }
 
 void CudaOde2DSystemAdapter::RemapReversalFiniteObjects() {
+
+
 	unsigned int num_mesh_objects = _group.NumObjects() - _vec_num_object_offsets[_mesh_objects_start_index];
 
 	inttype numBlocks = (num_mesh_objects + _blockSize - 1) / _blockSize;
 	CudaReversalFiniteObjects << <numBlocks, _blockSize >> > (num_mesh_objects, _vec_num_object_offsets[_mesh_objects_start_index], _vec_objects_to_index, _n_rev, _rev_from, _rev_to, _map);
+
 }
 
 void CudaOde2DSystemAdapter::RedistributeFiniteObjects(double timestep, double timestep_multiplier, curandState* rand_state)

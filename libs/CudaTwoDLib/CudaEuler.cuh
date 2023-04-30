@@ -62,6 +62,11 @@ __global__ void CudaCalculateGridEfficacies(inttype N, fptype efficacy, fptype g
 __global__ void CudaCalculateGridCellEfficacies(inttype N, fptype* cell_vals, fptype grid_cell_width, inttype grid_offset_width, fptype* stays, fptype* goes, int* offset1s, int* offset2s, inttype vs_offset);
 __global__ void CudaCalculateGridDerivativeCsr(inttype N, fptype rate, fptype* derivative, fptype* mass, fptype* val, inttype* ia, inttype* ja, inttype offset);
 __global__ void CudaCalculateGridDerivativeCsrFinite(inttype N, inttype finite_offset, inttype* spike_counts, inttype* objects, fptype* refract_times, inttype* refract_inds, fptype* val, inttype* ia, inttype* ja, inttype grid_cell_offset, curandState* state);
+__global__ void CudaCalculateGridDerivativeCsrFinite(inttype N, inttype finite_offset, inttype* spike_counts, inttype** objects, inttype* results_buffer, fptype** refract_times, inttype** refract_inds, fptype* val, inttype* ia, inttype* ja, inttype grid_cell_offset, curandState* state, dbltype* kernel, inttype kernel_size);
 
-__global__ void CudaSumMass(inttype N, fptype* mass, fptype* total);
+// Convolution Operations
+__global__ void CudaCalculateDerivativeKernel(inttype N, fptype rate, fptype* derivative, fptype* current_mass, fptype** mass_histories, inttype histories_n, fptype* val, inttype* ia, inttype* ja, inttype* map, inttype offset, dbltype* kernel, inttype kernel_n);
+__global__ void CudaCalculateGridDerivativeCsrKernel(inttype N, fptype rate, fptype* derivative, fptype* current_mass, fptype** mass_histories, inttype histories_n, fptype* val, inttype* ia, inttype* ja, inttype offset, dbltype* kernel, inttype kernel_n) {
+
+    __global__ void CudaSumMass(inttype N, fptype * mass, fptype * total);
 #endif

@@ -23,6 +23,55 @@ __global__ void CudaCalculateDerivative(inttype N, fptype rate, fptype* derivati
     }
 }
 
+__global__ void CudaCalculateDerivativeKernel(inttype N, fptype rate, fptype* derivative, fptype* current_mass, fptype** mass_histories, inttype histories_n, fptype* val, inttype* ia, inttype* ja,
+    inttype* map, inttype offset, dbltype* kernel, inttype kernel_n) {
+
+
+    int index = (blockIdx.x * blockDim.x + threadIdx.x);
+    int stride = (blockDim.x * gridDim.x);
+
+    int kernel_index = blockIdx.y;
+
+    double kernel_weight = kernel[kernel_index];
+    fptype* mass = current_mass;
+
+    // if we do not have enough recorded histories to span the full kernel, pad with current mass
+    // so if a kernel of size 5 only had 3 available histories, the first 2 kernel weights are applied with the current mass
+    // also use the current mass with the first kernel weight
+    if (kernel_index != 0) {
+        if (kernel_n > histories_n) {
+            int size_difference = (kernel_n - histories_n);
+
+            if (kernel_index >= size_difference) {
+                mass = mass_histories[kernel_index - size_difference];
+
+            }
+        }
+        else {
+            mass = mass_histories[kernel_index - 1];
+        }
+
+    }
+
+
+    for (int i = index; i < N; i += stride) {
+        int i_r = map[i + offset];
+        fptype dr = 0.;
+        for (unsigned int j = ia[i]; j < ia[i + 1]; j++) {
+            int j_m = map[ja[j] + offset];
+            dr += val[j] * mass[j_m];
+        }
+        dr -= mass[i_r];
+        dr *= rate * kernel_weight;
+        // make sure to use atomic here
+        atomicAdd(&derivative[i_r], dr);
+    }
+
+
+}
+
+
+
 __global__ void CudaCalculateGridDerivativeCsr(inttype N, fptype rate, fptype* derivative, fptype* mass, fptype* val, inttype* ia, inttype* ja, inttype offset) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
@@ -40,37 +89,47 @@ __global__ void CudaCalculateGridDerivativeCsr(inttype N, fptype rate, fptype* d
 }
 
 
-__global__ void CudaCalculateGridDerivativeCsrFinite(inttype N, inttype finite_offset, inttype* spike_counts, inttype* objects,
-    fptype* refract_times, inttype* refract_inds, fptype* val, inttype* ia, inttype* ja, inttype grid_cell_offset, curandState* state) {
-
-
+__global__ void CudaCalculateGridDerivativeCsrKernel(inttype N, fptype rate, fptype* derivative, fptype* current_mass, fptype** mass_histories, inttype histories_n, fptype* val, inttype* ia, inttype* ja,
+    inttype offset, dbltype* kernel, inttype kernel_n) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
 
-    for (int i = index; i < N; i += stride) {
-        int offset_index = i + finite_offset;
-        if (refract_times[offset_index] > 0 || spike_counts[offset_index] == 0)
-            continue;
+    int kernel_index = blockIdx.y;
 
-        inttype obj = objects[offset_index];
+    double kernel_weight = kernel[kernel_index];
+    fptype* mass = current_mass;
 
-        for (int s = 0; s < spike_counts[offset_index]; s++) {
-            fptype r = curand_uniform(&state[index]);
-            fptype total_prop = 0;
-            for (int j = ia[obj - grid_cell_offset]; j < ia[obj - grid_cell_offset + 1]; j++) {
-                total_prop += val[j];
-                if (r < total_prop) {
-                    obj = ja[j] + grid_cell_offset;
-                    break;
-                }
+    // if we do not have enough recorded histories to span the full kernel, pad with current mass
+    // so if a kernel of size 5 only had 3 available histories, the first 2 kernel weights are applied with the current mass
+    // also use the current mass with the first kernel weight
+    if (kernel_index != 0) {
+        if (kernel_n > histories_n) {
+            int size_difference = (kernel_n - histories_n);
+
+            if (kernel_index >= size_difference) {
+                mass = mass_histories[kernel_index - size_difference];
+
             }
         }
+        else {
+            mass = mass_histories[kernel_index - 1];
+        }
 
-        objects[offset_index] = obj;
     }
 
+    for (int i = index; i < N; i += stride) {
+        int io = i + offset;
+        fptype dr = 0.;
+        for (int j = ia[i]; j < ia[i + 1]; j++) {
+            dr += val[j] *
+                mass[ja[j] + offset];
+        }
+        dr -= mass[io];
+        dr *= rate * kernel_weight;
+        // make sure to use atomic here
+        atomicAdd(&derivative[io], dr);
+    }
 }
-
 
 __global__ void evolveMap(inttype N, inttype offset, inttype* map, inttype* unmap, inttype* cumulatives,
     inttype* lengths, inttype _t) {
@@ -129,9 +188,6 @@ __global__ void CudaUpdateFiniteObjects(inttype N, inttype finite_offset, inttyp
         objects[i + finite_offset] = map[current_index + offset];
     }
 }
-
-
-
 
 __global__ void CudaReversalFiniteObjects(inttype N, inttype offset, inttype* objects, inttype reversal_N,
     unsigned int* rev_from, unsigned int* rev_to, inttype* map) {

@@ -204,7 +204,6 @@ namespace MiindLib {
         std::vector<inttype> _num_mesh_objects;
         std::vector<inttype> _num_objects;
 
-        //TODO rename this?
         std::vector< std::vector<double> > _vec_vec_kernel_values;
         std::vector< dbltype > _vec_kernel_values;
 

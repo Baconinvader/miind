@@ -148,7 +148,6 @@ namespace CudaTwoDLib {
 		void EstimateGridThresholdsResetsRefractories(const std::vector<TwoDLib::Mesh>& vec_mesh,
 			const std::vector<std::vector<TwoDLib::Redistribution> >& vec_vec_reset, const std::vector<MPILib::Time>& times);
 
-
 		void FillReversalMap(const std::vector<TwoDLib::Mesh>&, const std::vector<std::vector<TwoDLib::Redistribution> >&);
 		void FillResetMap(const std::vector<TwoDLib::Mesh>&, const std::vector<std::vector<TwoDLib::Redistribution> >&);
 		void FillRefractoryTimes(const std::vector<MPILib::Time>&);
@@ -178,7 +177,8 @@ namespace CudaTwoDLib {
 
 		fptype* _mass;
 
-		std::vector<fptype*> _mass_histories;
+		std::vector<fptype*> _host_mass_histories;
+		fptype** _mass_histories;
 
 		vector<dbltype*> _vec_vec_kernels;
 

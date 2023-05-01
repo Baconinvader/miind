@@ -32,14 +32,14 @@
 
 namespace TwoDLib {
 
-/**
- * \brief Mesh or 2D algorithm class.
- *
- * This class simulates the evolution of a neural population density function on a 2D grid.
- */
+	/**
+	 * \brief Mesh or 2D algorithm class.
+	 *
+	 * This class simulates the evolution of a neural population density function on a 2D grid.
+	 */
 
-	template <class Solver=TwoDLib::MasterOdeint>
-	class MeshAlgorithmCustom : public DensityAlgorithmInterface<MPILib::CustomConnectionParameters>  {
+	template <class Solver = TwoDLib::MasterOdeint>
+	class MeshAlgorithmCustom : public DensityAlgorithmInterface<MPILib::CustomConnectionParameters> {
 
 	public:
 
@@ -50,7 +50,8 @@ namespace TwoDLib {
 			MPILib::Time,                           //!< default time step for Master equation
 			MPILib::Time tau_refractive = 0,        //!< absolute refractive period
 			const string& ratemethod = "",           //!< firing rate computation; by default the mass flux across threshold
-			const unsigned int num_objects = 0		//!< number of objects for finite sized population
+			const unsigned int num_objects = 0,		//!< number of objects for finite sized population
+			const std::vector<double> kernel = { 1.0 }//!< kernel to use when averaging densities
 		);
 
 		MeshAlgorithmCustom(const MeshAlgorithmCustom&);
@@ -73,20 +74,20 @@ namespace TwoDLib {
 		 * The current time point
 		 * @return The current time point
 		 */
-		virtual MPILib::Time getCurrentTime() const {return _t_cur;}
+		virtual MPILib::Time getCurrentTime() const { return _t_cur; }
 
 
 		/**
 		 * The calculated rate of the node
 		 * @return The rate of the node
 		 */
-	  virtual MPILib::Rate getCurrentRate() const {return _rate;}
+		virtual MPILib::Rate getCurrentRate() const { return _rate; }
 
 		/**
 		 * Stores the algorithm state in a Algorithm Grid
 		 * @return The state of the algorithm
 		 */
-	  virtual MPILib::AlgorithmGrid getGrid(MPILib::NodeId, bool b_state = true) const;
+		virtual MPILib::AlgorithmGrid getGrid(MPILib::NodeId, bool b_state = true) const;
 
 		virtual void reportDensity(MPILib::Time t) const;
 
@@ -97,11 +98,25 @@ namespace TwoDLib {
 		 * @param nodeVector Vector of the node States
 		 * @param weightVector Vector of the weights of the nodes
 		 * @param time Time point of the algorithm
-		 * @param typeVector Vector of the NodeTypes of the precursors
+		 * @param kernelVector Vector of the kernels of the nodes
 		 */
 		using MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>::evolveNodeState;
 		virtual void evolveNodeState(const std::vector<MPILib::Rate>& nodeVector,
-				const std::vector<MPILib::CustomConnectionParameters>& weightVector, MPILib::Time time);
+			const std::vector<MPILib::CustomConnectionParameters>& weightVector, MPILib::Time time,
+			const std::vector<std::vector<double>>& kernelVector);
+
+
+		/**
+		 * Evolve the node state. In the default case it simply calls envolveNodeState
+		 * without the NodeTypes. However if an algorithm needs the nodeTypes
+		 * of the precursors overwrite this function.
+		 * @param nodeVector Vector of the node States
+		 * @param weightVector Vector of the weights of the nodes
+		 * @param time Time point of the algorithm
+		 */
+		virtual void evolveNodeState(const std::vector<MPILib::Rate>& nodeVector,
+			const std::vector<MPILib::CustomConnectionParameters>& weightVector,
+			MPILib::Time time);
 
 		/**
 		 * prepare the Evolve method
@@ -110,8 +125,8 @@ namespace TwoDLib {
 		 * @param typeVector Vector of the NodeTypes of the precursors
 		 */
 		virtual void prepareEvolve(const std::vector<MPILib::Rate>& nodeVector,
-				const std::vector<MPILib::CustomConnectionParameters>& weightVector,
-				const std::vector<MPILib::NodeType>& typeVector);
+			const std::vector<MPILib::CustomConnectionParameters>& weightVector,
+			const std::vector<MPILib::NodeType>& typeVector);
 
 
 		/**
@@ -124,7 +139,7 @@ namespace TwoDLib {
 		 * by a TransitionMatrix is within a certain tolerance of a given efficacy. If that tolerance is not appropriate,
 		 * it can be adapted here
 		 */
-		void SetWeightTolerance(double tolerance){_tolerance = tolerance; }
+		void SetWeightTolerance(double tolerance) { _tolerance = tolerance; }
 
 		/**
 		 * Obtain current weight tolerance
@@ -134,13 +149,13 @@ namespace TwoDLib {
 		/**
 		 * Initialize a given Mesh cell before simulation starts
 		 */
-		void InitializeDensity(MPILib::Index i, MPILib::Index j){_sys.Initialize(0,i,j);}
+		void InitializeDensity(MPILib::Index i, MPILib::Index j) { _sys.Initialize(0, i, j); }
 
-	  const Ode2DSystemGroup& Sys() const { return _sys; }
+		const Ode2DSystemGroup& Sys() const { return _sys; }
 
 
 		//keep track of the node id
-		virtual void assignNodeId( MPILib::NodeId );
+		virtual void assignNodeId(MPILib::NodeId);
 
 
 		const std::vector<TwoDLib::Redistribution>& MapReversal() const { return  _vec_vec_rev[0]; }
@@ -161,7 +176,7 @@ namespace TwoDLib {
 
 		const std::string              _model_name;
 		const std::vector<std::string> _mat_names;   // it is useful to store the names, but not the matrices, as they will be converted internally by the MasterOMP object
-        const std::string              _rate_method;
+		const std::string              _rate_method;
 
 		// report quantities
 		MPILib::Time _h;
@@ -179,7 +194,7 @@ namespace TwoDLib {
 
 		// mesh and mappings
 		std::vector<TwoDLib::Mesh> _mesh_vec;          // we have to create a vector, even if MeshAlgorithm manages only one Mesh, because
-		                                               // there needs to be a place for Ode2DSystemGroup to store a vector of Mesh
+													   // there needs to be a place for Ode2DSystemGroup to store a vector of Mesh
 		std::vector< std::vector<TwoDLib::Redistribution> > _vec_vec_rev;
 		std::vector< std::vector<TwoDLib::Redistribution> > _vec_vec_res;
 
@@ -195,7 +210,7 @@ namespace TwoDLib {
 		MPILib::Number			_n_evolve;
 		MPILib::Number			_n_steps;
 
-		const vector<double>& (TwoDLib::Ode2DSystemGroup::*_sysfunction) () const;
+		const vector<double>& (TwoDLib::Ode2DSystemGroup::* _sysfunction) () const;
 	};
 }
 

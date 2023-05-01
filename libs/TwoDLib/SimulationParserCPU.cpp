@@ -305,14 +305,7 @@ void SimulationParserCPU< MPILib::CustomConnectionParameters>::parseXMLAlgorithm
 			double time_step = interpretValueAsDouble(std::string(algorithm.child_value("TimeStep")));
 			std::string activity_mode = interpretValueAsString(std::string(algorithm.attribute("ratemethod").value()));
 
-			std::vector<double> kernel_values;
-			if (algorithm.child("kernel")) {
-				kernel_values = interpretXmlAsDoubleVec(algorithm.child("kernel"));
-			}
-			else {
-				kernel_values = { 1.0 };
-			}
-			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::GridSomaDendriteAlgorithm(model_filename, transform_filename, time_step, start_v, start_w, tau_refractive, activity_mode, kernel_values));
+			_algorithms[algorithm_name] = std::unique_ptr<MPILib::AlgorithmInterface<MPILib::CustomConnectionParameters>>(new TwoDLib::GridSomaDendriteAlgorithm(model_filename, transform_filename, time_step, start_v, start_w, tau_refractive, activity_mode));
 		}
 
 		if (std::string("GridJumpAlgorithm") == interpretValueAsString(std::string(algorithm.attribute("type").value()))) {

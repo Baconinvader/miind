@@ -11,26 +11,26 @@
 #include "GridReport.hpp"
 
 namespace TwoDLib {
-
+	
 	template <class Solver>
-	pugi::xml_node MeshAlgorithmCustom<Solver>::CreateRootNode(const string& model_name){
+	pugi::xml_node MeshAlgorithmCustom<Solver>::CreateRootNode(const string& model_name) {
 
 		// document
 		pugi::xml_parse_result result = _doc.load_file(model_name.c_str());
 		pugi::xml_node  root = _doc.first_child();
 
 		if (result.status != pugi::status_ok)
-		  throw TwoDLib::TwoDLibException("Can't open .model file.");
+			throw TwoDLib::TwoDLibException("Can't open .model file");
 		return root;
 	}
 
 	template <class Solver>
-	std::vector<TwoDLib::Mesh> MeshAlgorithmCustom<Solver>::CreateMeshObject(){
+	std::vector<TwoDLib::Mesh> MeshAlgorithmCustom<Solver>::CreateMeshObject() {
 		// mesh
 		pugi::xml_node mesh_node = _root.first_child();
 
-		if (mesh_node.name() != std::string("Mesh") )
-		  throw TwoDLib::TwoDLibException("Couldn't find mesh node in model file");
+		if (mesh_node.name() != std::string("Mesh"))
+			throw TwoDLib::TwoDLibException("Couldn't find mesh node in model file");
 		std::ostringstream ostmesh;
 		mesh_node.print(ostmesh);
 		std::istringstream istmesh(ostmesh.str());
@@ -39,7 +39,7 @@ namespace TwoDLib {
 
 		// MatrixGenerator should already have inserted the stationary bin and there is no need
 		// to reexamine the stat file
- 		std::vector<TwoDLib::Mesh> vec_mesh{ mesh };
+		std::vector<TwoDLib::Mesh> vec_mesh{ mesh };
 		return vec_mesh;
 	}
 
@@ -51,7 +51,7 @@ namespace TwoDLib {
 		pugi::xml_node rev_node = _root.find_child(pred);
 
 		if (rev_node.name() != std::string("Mapping") ||
-		    rev_node.attribute("type").value() != type)
+			rev_node.attribute("type").value() != type)
 			throw TwoDLibException("Couldn't find mapping in model file");
 
 		std::ostringstream ostrev;
@@ -68,68 +68,69 @@ namespace TwoDLib {
 		const std::vector<std::string>& mat_names,
 		MPILib::Time h,
 		MPILib::Time tau_refractive,
-		const std::string&  rate_method,
-		const unsigned int num_objects
-	):
-	_tolerance(1e-7),
-	_model_name(model_name),
-	_mat_names(mat_names),
-	_rate_method(rate_method),
-	_h(h),
-	_rate(0.0),
-	_t_cur(0.0),
-	_root(CreateRootNode(model_name)),
-	_mesh_vec(CreateMeshObject()),
-	_vec_vec_rev(std::vector<std::vector<Redistribution> >{this->Mapping("Reversal")}),
-	_vec_vec_res(std::vector<std::vector<Redistribution> >{this->Mapping("Reset")}),
-	_vec_tau_refractive(std::vector<MPILib::Time>({tau_refractive})),
-	_vec_map(0),
-	_dt(_mesh_vec[0].TimeStep()),
-	_vec_num_objects(CreateNumObjects(num_objects)),
-	_sys(_mesh_vec,_vec_vec_rev,_vec_vec_res,_vec_tau_refractive, _vec_num_objects),
-	_n_evolve(0),
-	_n_steps(0),
-	// AvgV method is for Fitzhugh-Nagumo, and other methods that don't have a threshold crossing
-	_sysfunction(rate_method == "AvgV" ? &TwoDLib::Ode2DSystemGroup::AvgV : &TwoDLib::Ode2DSystemGroup::F)
-	// master parameter can only be calculated on configuration
+		const std::string& rate_method,
+		const unsigned int num_objects,
+		std::vector<double> kernel
+	) :
+		_tolerance(1e-7),
+		_model_name(model_name),
+		_mat_names(mat_names),
+		_rate_method(rate_method),
+		_h(h),
+		_rate(0.0),
+		_t_cur(0.0),
+		_root(CreateRootNode(model_name)),
+		_mesh_vec(CreateMeshObject()),
+		_vec_vec_rev(std::vector<std::vector<Redistribution> >{this->Mapping("Reversal")}),
+		_vec_vec_res(std::vector<std::vector<Redistribution> >{this->Mapping("Reset")}),
+		_vec_tau_refractive(std::vector<MPILib::Time>({ tau_refractive })),
+		_vec_map(0),
+		_dt(_mesh_vec[0].TimeStep()),
+		_vec_num_objects(CreateNumObjects(num_objects)),
+		_sys(_mesh_vec, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, _vec_num_objects),
+		_n_evolve(0),
+		_n_steps(0),
+		// AvgV method is for Fitzhugh-Nagumo, and other methods that don't have a threshold crossing
+		_sysfunction(rate_method == "AvgV" ? &TwoDLib::Ode2DSystemGroup::AvgV : &TwoDLib::Ode2DSystemGroup::F)
+		// master parameter can only be calculated on configuration
 	{
 
 		// default initialization is (0,0); if there is no strip 0, it's down to the user
-		if (_mesh_vec[0].NrCellsInStrip(0) > 0 )
-			_sys.Initialize(0,0,0);
+		if (_mesh_vec[0].NrCellsInStrip(0) > 0)
+			_sys.Initialize(0, 0, 0);
 		else
-			for(MPILib::Index i = 1; i < _mesh_vec[0].NrStrips(); i++)
-				if (_mesh_vec[0].NrCellsInStrip(i) > 0){
-					_sys.Initialize(0,i,0);
+			for (MPILib::Index i = 1; i < _mesh_vec[0].NrStrips(); i++)
+				if (_mesh_vec[0].NrCellsInStrip(i) > 0) {
+					_sys.Initialize(0, i, 0);
 					break;
 				}
 	}
 
 	template<>
-	MeshAlgorithmCustom<TwoDLib::MasterOdeint>::MeshAlgorithmCustom(const MeshAlgorithmCustom<TwoDLib::MasterOdeint>& rhs):
-	_tolerance(rhs._tolerance),
-	_model_name(rhs._model_name),
-	_mat_names(rhs._mat_names),
-	_rate_method(rhs._rate_method),
-	_h(rhs._h),
-	_rate(rhs._rate),
-	_t_cur(rhs._t_cur),
-	_mesh_vec(rhs._mesh_vec),
-	_vec_vec_rev(rhs._vec_vec_rev),
-	_vec_vec_res(rhs._vec_vec_res),
-	_vec_tau_refractive(rhs._vec_tau_refractive),
-	_vec_map(0),
-	_dt(_mesh_vec[0].TimeStep()),
-	_vec_num_objects(rhs._vec_num_objects),
-	_sys(_mesh_vec,_vec_vec_rev,_vec_vec_res,_vec_tau_refractive, rhs._vec_num_objects),
-	_n_evolve(0),
-	_n_steps(0),
-	_sysfunction(rhs._sysfunction)
-	// master parameter can only be calculated on configuration
+	MeshAlgorithmCustom<TwoDLib::MasterOdeint>::MeshAlgorithmCustom(const MeshAlgorithmCustom<TwoDLib::MasterOdeint>& rhs) :
+		_tolerance(rhs._tolerance),
+		_model_name(rhs._model_name),
+		_mat_names(rhs._mat_names),
+		_rate_method(rhs._rate_method),
+		_h(rhs._h),
+		_rate(rhs._rate),
+		_t_cur(rhs._t_cur),
+		_mesh_vec(rhs._mesh_vec),
+		_vec_vec_rev(rhs._vec_vec_rev),
+		_vec_vec_res(rhs._vec_vec_res),
+		_vec_tau_refractive(rhs._vec_tau_refractive),
+		_vec_map(0),
+		_dt(_mesh_vec[0].TimeStep()),
+		_vec_num_objects(rhs._vec_num_objects),
+		_sys(_mesh_vec, _vec_vec_rev, _vec_vec_res, _vec_tau_refractive, rhs._vec_num_objects),
+		_n_evolve(0),
+		_n_steps(0),
+		_sysfunction(rhs._sysfunction)
+		// master parameter can only be calculated on configuration
 	{
 		// default initialization is (0,0); if there is no strip 0, it's down to the user
-		if (_mesh_vec[0].NrCellsInStrip(0) > 0 )
-			_sys.Initialize(0,0,0);
+		if (_mesh_vec[0].NrCellsInStrip(0) > 0)
+			_sys.Initialize(0, 0, 0);
 	}
 
 	template <class Solver>
@@ -143,7 +144,7 @@ namespace TwoDLib {
 	{
 		std::vector<TwoDLib::TransitionMatrix> vec_mat;
 
-		for (const auto& name: mat_names)
+		for (const auto& name : mat_names)
 			vec_mat.push_back(TransitionMatrix(name));
 
 		return vec_mat;
@@ -152,7 +153,7 @@ namespace TwoDLib {
 	template <class Solver>
 	MeshAlgorithmCustom<Solver>* MeshAlgorithmCustom<Solver>::clone() const
 	{
-	  return new MeshAlgorithmCustom<Solver>(*this);
+		return new MeshAlgorithmCustom<Solver>(*this);
 	}
 
 	template <class Solver>
@@ -160,14 +161,14 @@ namespace TwoDLib {
 	{
 		_vec_map.clear();
 		_t_cur = par_run.getTBegin();
-		MPILib::Time t_step     = par_run.getTStep();
+		MPILib::Time t_step = par_run.getTStep();
 
 		Display::getInstance()->addOdeSystem(_node_id, &_sys, false);
 		GridReport<MPILib::CustomConnectionParameters>::getInstance()->registerObject(_node_id, this);
 
 		// the integration time step, stored in the MasterParameter, is gauged with respect to the
 		// network time step.
-		MPILib::Number n_ode = static_cast<MPILib::Number>(std::floor(t_step/_h));
+		MPILib::Number n_ode = static_cast<MPILib::Number>(std::floor(t_step / _h));
 		MasterParameter par(40);
 
 		// vec_mat will go out of scope; MasterOMP will convert the matrices
@@ -178,12 +179,12 @@ namespace TwoDLib {
 		_sys.InitializeResetRefractive(_network_time_step);
 
 		try {
-			std::unique_ptr<Solver> p_master(new Solver(_sys,std::vector<std::vector<TransitionMatrix > >{vec_mat}, par));
+			std::unique_ptr<Solver> p_master(new Solver(_sys, std::vector<std::vector<TransitionMatrix > >{vec_mat}, par));
 			_p_master = std::move(p_master);
 		}
 		// TODO: investigate the following
 		// for some reason, the rethrown exception is usually not caught by the main program, which is why we write its message to cerr here.
-		catch(TwoDLibException& e){
+		catch (TwoDLibException& e) {
 			std::cerr << e.what() << std::endl;
 			throw e;
 		}
@@ -197,7 +198,7 @@ namespace TwoDLib {
 	}
 
 	template <class Solver>
-	void MeshAlgorithmCustom<Solver>::assignNodeId( MPILib::NodeId nid ) {
+	void MeshAlgorithmCustom<Solver>::assignNodeId(MPILib::NodeId nid) {
 		_node_id = nid;
 	}
 
@@ -205,12 +206,12 @@ namespace TwoDLib {
 	MPILib::AlgorithmGrid MeshAlgorithmCustom<Solver>::getGrid(MPILib::NodeId id, bool b_state) const
 	{
 		// An empty grid will lead to crashes
-		vector<double> array_interpretation {0.};
-		vector<double> array_state {0.};
+		vector<double> array_interpretation{ 0. };
+		vector<double> array_state{ 0. };
 
-		if (b_state){
+		if (b_state) {
 			std::ostringstream ost;
-			ost << id  << "_" << (_t_cur-_dt);
+			ost << id << "_" << (_t_cur - _dt);
 			ost << "_" << _sys.P();
 			string fn("mesh_" + ost.str());
 
@@ -221,21 +222,21 @@ namespace TwoDLib {
 			// not in the directory where the mesh resides.
 			const std::string dirname = path.filename().string() + "_mesh";
 
-			if (! boost::filesystem::exists(dirname) ){
+			if (!boost::filesystem::exists(dirname)) {
 				boost::filesystem::create_directory(dirname);
 			}
 			std::ofstream ofst(dirname + "/" + fn);
-			std::vector<std::ostream*> vec_str{&ofst};
+			std::vector<std::ostream*> vec_str{ &ofst };
 			_sys.Dump(vec_str);
 		}
-		return MPILib::AlgorithmGrid(array_state,array_interpretation);
+		return MPILib::AlgorithmGrid(array_state, array_interpretation);
 	}
 
 	template <class Solver>
 	void MeshAlgorithmCustom<Solver>::reportDensity(MPILib::Time t) const
 	{
 		std::ostringstream ost;
-		ost << _node_id  << "_" << t;
+		ost << _node_id << "_" << t;
 		ost << "_" << _sys.P();
 		string fn("density_mesh_" + ost.str());
 
@@ -246,13 +247,14 @@ namespace TwoDLib {
 		// not in the directory where the mesh resides.
 		const std::string dirname = path.filename().string() + "_mesh";
 
-		if (! boost::filesystem::exists(dirname) ){
+		if (!boost::filesystem::exists(dirname)) {
 			boost::filesystem::create_directory(dirname);
 		}
 		std::ofstream ofst(dirname + "/" + fn);
-			std::vector<std::ostream*> vec_str{&ofst};
-			_sys.Dump(vec_str);
+		std::vector<std::ostream*> vec_str{ &ofst };
+		_sys.Dump(vec_str);
 	}
+
 
 	template <class Solver>
 	void MeshAlgorithmCustom<Solver>::evolveNodeState
@@ -260,57 +262,105 @@ namespace TwoDLib {
 		const std::vector<MPILib::Rate>& nodeVector,
 		const std::vector<MPILib::CustomConnectionParameters>& weightVector,
 		MPILib::Time time
+
 	)
 	{
-	  // The network time step must be an integer multiple of the network time step; in principle
-	  // we would expect this multiple to be one, but perhaps there are reasons to allow a population
-	  // have a finer time resolution than others, so we allow larger multiples but write a warning in the log file.
-		// determine number of steps and fix at the first step.
-		if (_n_steps == 0){
-		  // since n_steps == 0, time is the network time step
-			double n = (time - _t_cur)/_dt;
+		std::vector<std::vector<double>> empty_kernel;
+		evolveNodeState(nodeVector, weightVector, time, empty_kernel);
+	}
+
+	template <class Solver>
+	void MeshAlgorithmCustom<Solver>::evolveNodeState
+	(
+		const std::vector<MPILib::Rate>& nodeVector,
+		const std::vector<MPILib::CustomConnectionParameters>& weightVector,
+		MPILib::Time time,
+		const std::vector<std::vector<double>>& kernelVector
+	)
+	{
+		// The network time step must be an integer multiple of the network time step; in principle
+		// we would expect this multiple to be one, but perhaps there are reasons to allow a population
+		// have a finer time resolution than others, so we allow larger multiples but write a warning in the log file.
+		  // determine number of steps and fix at the first step.
+		if (_n_steps == 0) {
+			// since n_steps == 0, time is the network time step
+			double n = (time - _t_cur) / _dt;
 
 			_n_steps = static_cast<MPILib::Number>(round(n));
-			if (_n_steps == 0){
-			  throw TwoDLibException("Network time step is smaller than this grid's time step.");
+			if (_n_steps == 0) {
+				throw TwoDLibException("Network time step is smaller than this grid's time step.");
 			}
-			if (fabs(_n_steps - n) > 1e-6){
-			  throw TwoDLibException("Mismatch of mesh time step and network time step. Network time step should be a multiple (mostly one) of network time step");
+			if (fabs(_n_steps - n) > 1e-6) {
+				throw TwoDLibException("Mismatch of mesh time step and network time step. Network time step should be a multiple (mostly one) of network time step");
 			}
 			if (_n_steps > 1)
-			  LOG(MPILib::utilities::logWARNING) << "Mesh runs at a time step which is a multiple of the network time step. Is this intended?";
+				LOG(MPILib::utilities::logWARNING) << "Mesh runs at a time step which is a multiple of the network time step. Is this intended?";
 			else
-			  ; // else is fine
+				; // else is fine
 		}
 
-	    // mass rotation
-	    for (MPILib::Index i = 0; i < _n_steps; i++){
-				_sys.Evolve();
-				_sys.RemapReversal();
-	    }
+		// mass rotation
+		for (MPILib::Index i = 0; i < _n_steps; i++) {
+			_sys.Evolve();
+			_sys.RemapReversal();
+		}
 
-			std::vector<std::vector<MPILib::Rate>> vec_rates;
-			for(unsigned int i=0; i<_vec_vec_delay_queues.size(); i++){
-				std::vector<MPILib::Rate> rates;
-				for(unsigned int j=0; j<_vec_vec_delay_queues[i].size(); j++){
-					rates.push_back(_vec_vec_delay_queues[i][j].getCurrentRate());
-				}
-				vec_rates.push_back(rates);
+		std::vector<std::vector<MPILib::Rate>> vec_rates;
+		for (unsigned int i = 0; i < _vec_vec_delay_queues.size(); i++) {
+			std::vector<MPILib::Rate> rates;
+			for (unsigned int j = 0; j < _vec_vec_delay_queues[i].size(); j++) {
+				rates.push_back(_vec_vec_delay_queues[i][j].getCurrentRate());
+			}
+			vec_rates.push_back(rates);
+		}
+
+		// the number of mass histories to store is based on kernelVector
+		unsigned int longest_kernel_size = 1;
+		for (std::vector<double> kern : kernelVector) {
+			if (kern.size() > longest_kernel_size)
+				longest_kernel_size = kern.size();
+		}
+
+		if (_sys._vec_masses.size() < longest_kernel_size) {
+
+			// at least one incoming activity has a kernel with size greater than the amount of histories stored in _sys
+			// so increase size of _sys
+			vector<double> back_mass;
+			if (_sys._vec_masses.size() == 0) {
+				back_mass = _sys._vec_mass;
+			}
+			else {
+				back_mass = _sys._vec_masses.back();
 			}
 
-	    // master equation
+			while (_sys._vec_masses.size() < longest_kernel_size) {
+				_sys._vec_masses.push_back(back_mass);
+			}
+
+		}
+
+		if (_sys._vec_masses.size() > 0) {
+			//shift histories
+			for (int history = _sys._vec_masses.size() - 1; history > 0; history--) {
+				_sys._vec_masses.at(history) = _sys._vec_masses.at(history - 1);
+			}
+			//add most recent history
+			_sys._vec_masses.at(0) = _sys._vec_mass;
+		}
+
+		// master equation
 		if (_vec_num_objects[0] > 0) {
 			_p_master->ApplyFinitePoisson(_n_steps * _dt, vec_rates, _vec_map);
 		}
 		else {
-			_p_master->Apply(_n_steps * _dt, vec_rates, _vec_map);
+			_p_master->Apply(_n_steps * _dt, vec_rates, _vec_map, kernelVector);
 		}
-	    
+
 		_sys.RedistributeProbability(_n_steps);
 
- 	    _t_cur += _n_steps*_dt;
- 	    _rate = (_sys.*_sysfunction)()[0];
- 	    _n_evolve++;
+		_t_cur += _n_steps * _dt;
+		_rate = (_sys.*_sysfunction)()[0];
+		_n_evolve++;
 	}
 
 	template <class Solver>
@@ -323,12 +373,12 @@ namespace TwoDLib {
 		// objects to the Master object. For the user there is no obvious way to keep this in synchrony, so
 		// we allow any order, and use the synaptic efficacy of a connection to find the corresponding matrix.
 
- 		// this function will only be called once;
-		_vec_map = std::vector<MPILib::Index>(vec_weights.size(),std::numeric_limits<MPILib::Index>::max());
+		// this function will only be called once;
+		_vec_map = std::vector<MPILib::Index>(vec_weights.size(), std::numeric_limits<MPILib::Index>::max());
 
- 		for(MPILib::Index i_weight = 0; i_weight < _vec_map.size(); i_weight++){
-			for (MPILib::Index i_mat = 0; i_mat < _p_master->NrMatrices(0); i_mat++){
-				if ( fabs( _p_master->Efficacy(0,i_mat) - std::stod(vec_weights[i_weight]._params.at("efficacy"))) < _tolerance ){
+		for (MPILib::Index i_weight = 0; i_weight < _vec_map.size(); i_weight++) {
+			for (MPILib::Index i_mat = 0; i_mat < _p_master->NrMatrices(0); i_mat++) {
+				if (fabs(_p_master->Efficacy(0, i_mat) - std::stod(vec_weights[i_weight]._params.at("efficacy"))) < _tolerance) {
 					if (_vec_map[i_weight] == std::numeric_limits<MPILib::Index>::max())
 						_vec_map[i_weight] = i_mat;
 					else {
@@ -336,14 +386,14 @@ namespace TwoDLib {
 					}
 				}
 			}
-			if (_vec_map[i_weight] == std::numeric_limits<MPILib::Index>::max()){
+			if (_vec_map[i_weight] == std::numeric_limits<MPILib::Index>::max()) {
 				throw TwoDLib::TwoDLibException("There are no matrices associated with this weight.");
 			}
 		}
 
 		_vec_vec_delay_queues = std::vector< std::vector<MPILib::DelayedConnectionQueue> >(0); // MeshAlgorithm really only uses the first array, i.e. the rates it receives in prepareEvole
- 		_vec_vec_delay_queues.push_back( std::vector<MPILib::DelayedConnectionQueue>(vec_weights.size()));
-		for(unsigned int q = 0; q < vec_weights.size(); q++){
+		_vec_vec_delay_queues.push_back(std::vector<MPILib::DelayedConnectionQueue>(vec_weights.size()));
+		for (unsigned int q = 0; q < vec_weights.size(); q++) {
 			_vec_vec_delay_queues[0][q] = MPILib::DelayedConnectionQueue(_network_time_step, std::stod(vec_weights[q]._params.at("delay")));
 		}
 	}
@@ -362,8 +412,8 @@ namespace TwoDLib {
 		// take into account the number of connections
 
 		assert(nodeVector.size() == weightVector.size());
-		for (MPILib::Index i = 0; i < nodeVector.size(); i++){
-			_vec_vec_delay_queues[0][i].updateQueue(nodeVector[i]*std::stod(weightVector[i]._params.at("num_connections")));
+		for (MPILib::Index i = 0; i < nodeVector.size(); i++) {
+			_vec_vec_delay_queues[0][i].updateQueue(nodeVector[i] * std::stod(weightVector[i]._params.at("num_connections")));
 		}
 	}
 }

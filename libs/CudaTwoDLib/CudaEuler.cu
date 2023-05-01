@@ -131,6 +131,34 @@ __global__ void CudaCalculateGridDerivativeCsrKernel(inttype N, fptype rate, fpt
     }
 }
 
+__global__ void CudaCalculateGridDerivativeCsrFinite(inttype N, inttype finite_offset, inttype* spike_counts, inttype* objects,
+    fptype* refract_times, inttype* refract_inds, fptype* val, inttype* ia, inttype* ja, inttype grid_cell_offset, curandState* state) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+
+    for (int i = index; i < N; i += stride) {
+        int offset_index = i + finite_offset;
+        if (refract_times[offset_index] > 0 || spike_counts[offset_index] == 0)
+            continue;
+
+        inttype obj = objects[offset_index];
+
+        for (int s = 0; s < spike_counts[offset_index]; s++) {
+            fptype r = curand_uniform(&state[index]);
+            fptype total_prop = 0;
+            for (int j = ia[obj - grid_cell_offset]; j < ia[obj - grid_cell_offset + 1]; j++) {
+                total_prop += val[j];
+                if (r < total_prop) {
+                    obj = ja[j] + grid_cell_offset;
+                    break;
+                }
+            }
+        }
+
+        objects[offset_index] = obj;
+    }
+}
+
 __global__ void evolveMap(inttype N, inttype offset, inttype* map, inttype* unmap, inttype* cumulatives,
     inttype* lengths, inttype _t) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -188,6 +216,7 @@ __global__ void CudaUpdateFiniteObjects(inttype N, inttype finite_offset, inttyp
         objects[i + finite_offset] = map[current_index + offset];
     }
 }
+
 
 __global__ void CudaReversalFiniteObjects(inttype N, inttype offset, inttype* objects, inttype reversal_N,
     unsigned int* rev_from, unsigned int* rev_to, inttype* map) {

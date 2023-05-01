@@ -66,7 +66,7 @@ __global__ void CudaCalculateGridDerivativeCsrFinite(inttype N, inttype finite_o
 
 // Convolution Operations
 __global__ void CudaCalculateDerivativeKernel(inttype N, fptype rate, fptype* derivative, fptype* current_mass, fptype** mass_histories, inttype histories_n, fptype* val, inttype* ia, inttype* ja, inttype* map, inttype offset, dbltype* kernel, inttype kernel_n);
-__global__ void CudaCalculateGridDerivativeCsrKernel(inttype N, fptype rate, fptype* derivative, fptype* current_mass, fptype** mass_histories, inttype histories_n, fptype* val, inttype* ia, inttype* ja, inttype offset, dbltype* kernel, inttype kernel_n) {
+__global__ void CudaCalculateGridDerivativeCsrKernel(inttype N, fptype rate, fptype* derivative, fptype* current_mass, fptype** mass_histories, inttype histories_n, fptype* val, inttype* ia, inttype* ja, inttype offset, dbltype* kernel, inttype kernel_n);
 
     __global__ void CudaSumMass(inttype N, fptype * mass, fptype * total);
 #endif

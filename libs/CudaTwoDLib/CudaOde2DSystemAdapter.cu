@@ -128,7 +128,6 @@ CudaOde2DSystemAdapter::CudaOde2DSystemAdapter
 	this->FillRefractoryTimes(group.Tau_ref());
 	this->FillResetMap(group.MeshObjects(), group.MapReset());
 
-	this->FillFiniteVectors(largest_histories_count);
 	this->FillSpikesAndSpikeCounts();
 	this->EstimateGridThresholdsResetsRefractories(group.MeshObjects(), group.MapReset(), group.Tau_ref());
 

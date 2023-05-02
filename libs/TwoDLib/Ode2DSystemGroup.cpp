@@ -133,8 +133,6 @@ Ode2DSystemGroup::Ode2DSystemGroup
 {
 
 	InitializeFiniteObjects();
-	//TODO add this in
-	InitializeFiniteObjectHistories(1);
 
 	for (const auto& m : _mesh_list)
 		assert(m.TimeStep() != 0.0);
@@ -259,12 +257,10 @@ vector<vector<MPILib::Potential>> Ode2DSystemGroup::InitializeMasses(const unsig
 
 	vector<vector<MPILib::Potential>> histories;
 
-	//TODO add this
-	//if (count > 1) {
+
 	for (int h = 0; h < count; h++) {
 		histories.push_back(InitializeMass());
 	}
-	//}
 
 	return histories;
 }
@@ -465,8 +461,6 @@ void Ode2DSystemGroup::EvolveWithoutMeshUpdate() {
 }
 
 void Ode2DSystemGroup::ShiftHistories(unsigned int count) {
-	std::cout << "longest kernel " << count << std::endl;
-
 	if (_vec_masses.size() > 0) {
 		//shift histories
 		for (int history = _vec_masses.size() - 1; history > 0; history--) {

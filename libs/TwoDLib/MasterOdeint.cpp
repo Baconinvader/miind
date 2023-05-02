@@ -88,49 +88,7 @@ void MasterOdeint::Apply
 	typedef boost::numeric::odeint::controlled_runge_kutta< error_stepper_type > controlled_stepper_type;
 	controlled_stepper_type controlled_stepper;
 
-
-	//TODO remove this?
-	/*if (_sys._vec_masses.size() > 1) {
-		//use a weighting over past densities
-		unsigned int hi = 0;
-		vector<MPILib::Mass> vec_mass_temp;
-		vector<MPILib::Mass> vec_mass_sum;
-
-		//create empty sum
-		for (unsigned int i = 0; i < _sys._vec_mass.size(); i++) {
-			vec_mass_sum.push_back(0.0);
-		}
-
-		for (vector<MPILib::Mass> vec_mass : _sys._vec_masses) {
-
-			double scaler_sum = 0.0;
-			for (int i = 0; i < vec_mass.size(); i++)
-				scaler_sum += vec_mass[i];
-
-			vec_mass_temp = vec_mass;///
-			boost::numeric::odeint::integrate_adaptive(boost::numeric::odeint::make_controlled< error_stepper_type >(1.0e-6, 1.0e-6), std::ref(*this), vec_mass_temp, 0.0, t_step, 1e-4);
-
-			//TODO improve this
-			for (int i = 0; i < vec_mass_sum.size(); i++) {
-				vec_mass_sum[i] += vec_mass_temp[i] * _sys._vec_kernel[hi];
-			}
-			//std::transform(vec_mass_sum.begin(), vec_mass_sum.end(), vec_mass_temp.begin(), vec_mass_temp.begin(), std::plus<int>());
-			hi++;
-		}
-		_sys._vec_mass = vec_mass_sum;
-
-		double scaler_sum = 0.0;
-		for (int i = 0; i < _sys._vec_mass.size(); i++)
-			scaler_sum += _sys._vec_mass[i];
-	}*/
-	//else {
-   //TODO test this
 	boost::numeric::odeint::integrate_adaptive(boost::numeric::odeint::make_controlled< error_stepper_type >(1.0e-6, 1.0e-6), std::ref(*this), _sys._vec_mass, 0.0, t_step, 1e-4);
-
-	/*double scaler_sum = 0.0;
-	for (int i = 0; i < _sys._vec_mass.size(); i++)
-		scaler_sum += _sys._vec_mass[i];
-	 }*/
 
 }
 
@@ -202,11 +160,6 @@ void MasterOdeint::operator()(const vector<double>& vec_mass, vector<double>& dy
 			// do NOT map the rate
 			_rate = rates[i_mesh][irate];
 
-			std::cout << "Apply op() Rates [" << _rate << "] " << rates.size() << ", " << rates[i_mesh].size() << std::endl;
-			for (MPILib::Rate crate : rates[i_mesh]) {
-				std::cout << "rate: " << crate << std::endl;
-			}
-
 			unsigned int k = 0;
 			unsigned int kern_size = _p_vec_kernels->at(irate).size();
 			int size_difference = (kern_size > _sys._vec_masses.size()) ? kern_size - _sys._vec_masses.size() : 0;
@@ -214,20 +167,11 @@ void MasterOdeint::operator()(const vector<double>& vec_mass, vector<double>& dy
 			// no kernel available?
 			bool no_kernel = (kern_size == 0) || (_p_vec_kernels->size() <= irate);
 
-
-			std::cout << "Kernels" << _p_vec_kernels->size() << " [" << kern_size << ", " << _sys._vec_masses.size() << ", " << size_difference << "] " << std::endl;
-			for (auto ckernel : *_p_vec_kernels) {
-				std::cout << "kern: " << ckernel.size() << " masses " << _sys._vec_masses.size() << std::endl;
-			}
-
-
 			// if the kernel size is greater than the number of histories available, then we pad with the current mass
 			// so if a kernel of size 5 only had 3 available histories, the first 2 kernel weights are applied with the current mass
 			double kern_val;
 			while (k < size_difference || no_kernel) {
 				kern_val = (no_kernel) ? 1.0 : _p_vec_kernels->at(irate).at(k);
-
-				std::cout << k << ":" << kern_val << ", ";
 
 				// it is only the matrices that need to be mapped
 				_vec_vec_csr[i_mesh][vec_map[irate]].MVMapped

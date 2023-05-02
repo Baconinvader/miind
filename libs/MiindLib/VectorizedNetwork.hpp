@@ -41,12 +41,10 @@ namespace MiindLib {
 
         NodeMeshConnection(MPILib::NodeId in, MPILib::NodeId out, double eff, int n_conns, double delay, TwoDLib::TransitionMatrix* trans) :
             _external(false), _external_id(0), _in(in), _out(out), _efficacy(eff), _n_connections(n_conns), _delay(delay), _transition(trans) {
-            std::cout << "NEW MESH CON " << _in << " -> " << _out << std::endl;
         }
 
         NodeMeshConnection(MPILib::NodeId out, double eff, int n_conns, double delay, TwoDLib::TransitionMatrix* trans, MPILib::NodeId ext_id) :
             _external(true), _external_id(ext_id), _out(out), _efficacy(eff), _n_connections(n_conns), _delay(delay), _transition(trans) {
-            std::cout << "NEW MESH CON [no in] -> " << _out << std::endl;
         }
     };
 

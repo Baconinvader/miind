@@ -89,22 +89,9 @@ CudaOde2DSystemAdapter::CudaOde2DSystemAdapter
 {
 
 	// set kernel on GPU
-	//dbltype** _vec_vec_kernels;
-	//inttype* _vec_kernel_sizes;
-
-	//dbltype* host_kernel_pointers[kernels.size()];
-
-	//TODO remove this
-	//checkCudaErrors(cudaMalloc((inttype**)&_vec_kernel_sizes, kernels.size() * sizeof(inttype)));
-	//checkCudaErrors(cudaMalloc((dbltype***)&_vec_vec_kernels, kernels.size() * sizeof(dbltype*)));
-
-
 	unsigned int largest_histories_count = 1;
 	for (int i = 0; i < kernels.size(); i++) {
 		_vec_vec_kernels.push_back((dbltype*)0);
-
-		//inttype kernel_size = kernels.at(i).size()
-		//checkCudaErrors(cudaMemcpy( &_vec_kernel_sizes[i], &kernel_size, 1 * sizeof(inttype), cudaMemcpyHostToDevice));
 
 
 		// allocate a kernels worth of memory
@@ -113,9 +100,6 @@ CudaOde2DSystemAdapter::CudaOde2DSystemAdapter
 		checkCudaErrors(cudaMemcpy(_vec_vec_kernels[i], kernels.at(i).data(), kernels.at(i).size() * sizeof(dbltype), cudaMemcpyHostToDevice));
 
 		// then copy the pointer to the kernel memory to _vec_vec_kernels
-		//TODO remove this
-		//checkCudaErrors(cudaMemcpy(&_vec_vec_kernels[i], &host_kernel_pointers[i], 1 * sizeof(dbltype*), cudaMemcpyHostToDevice));
-
 		if (kernels.at(i).size() > largest_histories_count) {
 			largest_histories_count = kernels.at(i).size();
 		}
@@ -232,7 +216,6 @@ CudaOde2DSystemAdapter::~CudaOde2DSystemAdapter()
 	for (unsigned int m = 0; m < _refractory_mass_local.size(); m++)
 		cudaFree(_refractory_mass[m]);
 
-	//TODO, replace for loops with foreach or unsigned int
 	unsigned int histories_count = 5;
 	for (unsigned int m = 0; m < histories_count; m++) {
 		cudaFree(_host_mass_histories[m]);
@@ -289,7 +272,6 @@ void CudaOde2DSystemAdapter::ShiftHistories(unsigned int count)
 			_host_mass_histories.at(history) = _host_mass_histories.at(history - 1);
 		}
 		_host_mass_histories.at(0) = temp_mass;
-		std::cout << "new top shifted " << _host_mass_histories.at(0) << std::endl;
 
 		//add history
 		checkCudaErrors(cudaMemcpy(_host_mass_histories.at(0), _mass, _n * sizeof(fptype), cudaMemcpyDeviceToDevice));
@@ -306,7 +288,6 @@ fptype CudaOde2DSystemAdapter::SumMass(int history_index) {
 
 	checkCudaErrors(cudaMalloc((fptype**)&sum, sizeof(fptype)));
 
-	//TODO make this better
 	fptype zero_val = 0.0;
 	checkCudaErrors(cudaMemcpy(sum, &zero_val, 1 * sizeof(fptype), cudaMemcpyHostToDevice));
 

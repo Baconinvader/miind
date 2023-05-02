@@ -113,7 +113,6 @@ int SimulationParserCPU<WeightType>::interpretValueAsInt(std::string value) {
 	return std::stoi(_variables[value]);
 }
 
-//TODO document this
 template<class WeightType >
 std::vector<double> SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(pugi::xml_node node) {
 
@@ -121,7 +120,7 @@ std::vector<double> SimulationParserCPU<WeightType>::interpretXmlAsDoubleVec(pug
 		return {};
 
 	std::vector<double> vec_values;
-	if (node) { //TODO better name
+	if (node) {
 		const pugi::char_t* value_string;
 		for (pugi::xml_node child_node = node.first_child(); child_node; child_node = child_node.next_sibling())
 		{

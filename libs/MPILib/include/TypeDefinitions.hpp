@@ -19,23 +19,23 @@
 #ifndef MPILIB_TYPEDEFINITIONS_HPP_
 #define MPILIB_TYPEDEFINITIONS_HPP_
 
-namespace MPILib{
+namespace MPILib {
 
-typedef double Rate;
-//! Define anything that has a state as a type
-typedef double State;
-typedef State Probability;
-typedef State ActivityType;
-typedef State Mass;
-typedef State Time;
-typedef State TimeStep;
-typedef State Density;
-typedef State Potential;
-typedef State Efficacy;
+	typedef double Rate;
+	//! Define anything that has a state as a type
+	typedef double State;
+	typedef State Probability;
+	typedef State ActivityType;
+	typedef State Mass;
+	typedef State Time;
+	typedef State TimeStep;
+	typedef State Density;
+	typedef State Potential;
+	typedef State Efficacy;
 
-typedef unsigned int NodeId;
-typedef unsigned int Number;
-typedef unsigned int Index;
+	typedef unsigned int NodeId;
+	typedef unsigned int Number;
+	typedef unsigned int Index;
 
 }
 

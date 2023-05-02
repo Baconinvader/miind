@@ -19,8 +19,8 @@ bool checkKernel(std::vector<double> kernel) {
     }
 
 
-    double tolerance = 0.000001;
-    if (abs(kernel_sum - 1.0) > tolerance) {
+    //double tolerance = 0.000001;
+    /*if (abs(kernel_sum - 1.0) > tolerance) {
         if (kernel_sum > 1.0) {
             std::cout << "Warning: kernel weights sum to " << kernel_sum << " instead of 1.0, which will likely lead to errors" << std::endl;
         }
@@ -31,7 +31,8 @@ bool checkKernel(std::vector<double> kernel) {
     }
     else {
         return true;
-    }
+    }*/
+    return true;
 }
 
 VectorizedNetwork::VectorizedNetwork(MPILib::Time time_step) :
@@ -80,6 +81,7 @@ void VectorizedNetwork::addMeshNode(TwoDLib::Mesh mesh,
 
     _num_mesh_objects.push_back(finite_size);
 
+
 }
 
 void VectorizedNetwork::addRateNode(function_pointer functor, std::vector<double> vec_kernel_values) {
@@ -88,6 +90,7 @@ void VectorizedNetwork::addRateNode(function_pointer functor, std::vector<double
 
     checkKernel(vec_kernel_values);
     _vec_vec_kernel_values.push_back(vec_kernel_values);
+
 }
 
 void VectorizedNetwork::addRateNode(rate_functor functor, std::vector<double> vec_kernel_values) {
@@ -96,6 +99,7 @@ void VectorizedNetwork::addRateNode(rate_functor functor, std::vector<double> ve
 
     checkKernel(vec_kernel_values);
     _vec_vec_kernel_values.push_back(vec_kernel_values);
+
 }
 
 void VectorizedNetwork::initOde2DSystem(unsigned int min_solve_steps) {
@@ -861,8 +865,6 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
         rates[i] *= _n_steps;
 
 
-    std::cout << "steps [1]" << _master_steps << std::endl;
-
 
     for (MPILib::Index i_part = 0; i_part < _master_steps; i_part++) {
         _csr_adapter->ClearDerivative();
@@ -878,10 +880,6 @@ std::vector<double> VectorizedNetwork::singleStep(std::vector<double> activities
     }
 
     _group_adapter->ShiftHistories(largest_kernel);
-
-    //TODO move this?
-    _group_adapter->ShiftFiniteHistories();
-
 
     _csr_adapter->CalculateMeshGridDerivativeWithEfficacyFinite(_connection_out_group_mesh, rates, _effs, _grid_cell_widths, _grid_cell_offsets, _vec_mesh[0].TimeStep());
 

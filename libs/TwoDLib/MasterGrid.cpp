@@ -158,44 +158,8 @@ void MasterGrid::Apply(double t_step, const vector<double>& rates, vector<double
     typedef boost::numeric::odeint::controlled_runge_kutta< error_stepper_type > controlled_stepper_type;
     controlled_stepper_type controlled_stepper;
 
-
-    /*if (_sys._vec_masses.size() > 1) {
-        //use a weighting over past densities
-        unsigned int hi = 0;
-        vector<MPILib::Mass> vec_mass_temp;
-        vector<MPILib::Mass> vec_mass_sum;
-
-        //create empty sum
-        for (unsigned int i = 0; i < _sys._vec_mass.size(); i++) {
-            vec_mass_sum.push_back(0.0);
-        }
-
-        for (vector<MPILib::Mass> vec_mass : _sys._vec_masses) {
-
-            double scaler_sum = 0.0;
-            for (int i = 0; i < vec_mass.size(); i++)
-                scaler_sum += vec_mass[i];
-
-            vec_mass_temp = vec_mass;
-            boost::numeric::odeint::integrate_adaptive(boost::numeric::odeint::make_controlled< error_stepper_type >(1.0e-6, 1.0e-6), *this, vec_mass_temp, 0.0, t_step, 1e-4);
-
-            //TODO improve this
-            for (int i = 0; i < vec_mass_sum.size(); i++) {
-                vec_mass_sum[i] += vec_mass_temp[i] * _sys._vec_kernel[hi];
-            }
-            //std::transform(vec_mass_sum.begin(), vec_mass_sum.end(), vec_mass_temp.begin(), vec_mass_temp.begin(), std::plus<int>());
-            hi++;
-        }
-        _sys._vec_mass = vec_mass_sum;
-    }
-    else {*/
-    //use a single density
     boost::numeric::odeint::integrate_adaptive(boost::numeric::odeint::make_controlled< error_stepper_type >(1.0e-6, 1.0e-6), *this, _sys._vec_mass, 0.0, t_step, 1e-4);
 
-    double scaler_sum = 0.0;
-    for (int i = 0; i < _sys._vec_mass.size(); i++)
-        scaler_sum += _sys._vec_mass[i];
-    //}
 }
 
 void MasterGrid::ApplyFinitePoisson

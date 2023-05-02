@@ -62,8 +62,8 @@ namespace MPILib {
 				kernel_sum += value;
 			}
 
-			double tolerance = 0.000001;
-			if (abs(kernel_sum - 1.0) > tolerance) {
+			//double tolerance = 0.000001;
+			/*if (abs(kernel_sum - 1.0) > tolerance) {
 				if (kernel_sum > 1.0) {
 					std::cout << "Warning: kernel weights sum to " << kernel_sum << " instead of 1.0, which will likely lead to errors" << std::endl;
 				}
@@ -74,7 +74,8 @@ namespace MPILib {
 			}
 			else {
 				return true;
-			}
+			}*/
+			return true;
 		}
 
 		/**

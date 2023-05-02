@@ -423,7 +423,6 @@ namespace TwoDLib {
 		vector<MPILib::Mass>	     	_vec_mass;
 
 		vector<vector<MPILib::Mass>>    _vec_masses; // used for holding a history of density mass
-		unsigned int                    _histories_count; // TODO is this used?
 		vector<double>                  _vec_kernel; // used for holding a weighting of densities to look up
 
 		vector<MPILib::Index>			_vec_objects_to_index;

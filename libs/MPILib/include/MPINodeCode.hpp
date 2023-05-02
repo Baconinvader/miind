@@ -163,8 +163,6 @@ namespace MPILib {
 		_precursor_kernels.push_back(tempNode.getKernel());
 
 
-		std::cout << _name << "[" << _nodeId << ", " << _nodeType << "]" << " adding node " << tempNode._name << "[" << tempNode._nodeId << ", " << tempNode._nodeType << "]" << " with kernel: " << tempNode.getKernel().size() << std::endl;
-
 	}
 
 	template<class Weight, class NodeDistribution>

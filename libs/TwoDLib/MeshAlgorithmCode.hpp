@@ -343,7 +343,6 @@ namespace TwoDLib {
 		const std::vector<std::vector<double>>& kernelVector
 	)
 	{
-		//std::cout << "MeshAlgorithm evolveNodeState 1" << std::endl;
 
 	  // The network time step must be an integer multiple of the network time step; in principle
 	  // we would expect this multiple to be one, but perhaps there are reasons to allow a population
@@ -370,7 +369,6 @@ namespace TwoDLib {
 		}
 
 		// mass rotation
-		//std::cout << "MeshAlgorithm evolveNodeState 2" << std::endl;
 		for (MPILib::Index i = 0; i < _n_steps; i++) {
 			_sys.Evolve();
 			_sys.RemapReversal();
@@ -386,7 +384,7 @@ namespace TwoDLib {
 		}
 
 
-		_sys.RedistributeProbability(_n_steps);
+		
 
 		// master equation
 		_p_master->Apply(_n_steps * _dt, vec_rates, _vec_map, kernelVector);
@@ -400,6 +398,7 @@ namespace TwoDLib {
 		}
 		_sys.ShiftHistories(longest_kernel_size);
 
+		_sys.RedistributeProbability(_n_steps);
 
 
 		_t_cur += _n_steps * _dt;

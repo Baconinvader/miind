@@ -282,18 +282,6 @@ namespace TwoDLib {
 		}
 		_sys.ShiftHistories(longest_kernel_size);
 
-		std::cout << "INCOMING VECTOR GRID - " << kernelVector.size() << std::endl;
-
-		unsigned int i = 0;
-		for (vector<double> kern : kernelVector) {
-			std::cout << i << ": ";
-			for (double val : kern) {
-				std::cout << val << ", ";
-			}
-			std::cout << std::endl;
-			i++;
-		}
-
 		// master equation
 		applyMasterSolver(vec_rates[0], kernelVector);
 

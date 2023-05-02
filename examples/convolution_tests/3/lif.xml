@@ -1,0 +1,44 @@
+<Simulation>
+<Variable Name="EFF">0.03</Variable>
+<Variable Name="TIMESTEP">0.001</Variable>
+<WeightType>DelayedConnection</WeightType>
+
+
+<Algorithms>
+<Algorithm type="MeshAlgorithm" name="E_p" modelfile="lif.model" >
+<TimeStep>TIMESTEP</TimeStep>
+<MatrixFile>lif_0.03_0_0_0_.mat</MatrixFile>
+</Algorithm>
+
+
+<Algorithm type="RateFunctor" name="ExcInput_p">
+<TimeStep>TIMESTEP</TimeStep>
+<expression>800.</expression>
+<kernel>
+<value>0.25</value>
+<value>0.25</value>
+<value>0.25</value>
+<value>0.25</value>
+</kernel> 
+</Algorithm>
+</Algorithms>
+
+
+<Nodes>
+<Node algorithm="E_p" name="LIF_p" type="EXCITATORY_DIRECT" />
+<Node algorithm="ExcInput_p" name="Inp_p" type="NEUTRAL" />
+</Nodes>
+<Connections>
+<Connection In="Inp_p" Out="LIF_p">1 EFF 0</Connection>
+</Connections>
+<Reporting>
+<Display node="LIF_p"/>
+<Rate node="LIF_p" t_interval="0.001"/>
+</Reporting>
+<SimulationRunParameter>
+<SimulationName>test_p</SimulationName>
+<t_end>0.1</t_end>
+<t_step>TIMESTEP</t_step>
+<name_log>test_p.log</name_log>
+</SimulationRunParameter>
+</Simulation>

@@ -1,0 +1,34 @@
+<Simulation>
+     <WeightType>CustomConnectionParameters</WeightType>
+     <Algorithms>
+          <Algorithm type="GridAlgorithmGroup" name="COND" modelfile="cond.model" tau_refractive="0.0" transformfile="cond_0_0_0_0_.tmat" start_v="-0.065" start_w="0.0" >
+               <TimeStep>1e-05</TimeStep>
+          </Algorithm>
+		  <Algorithm type="RateFunctor" name="ExcitatoryInput">
+			   <expression>800.</expression>
+                           <kernel>
+                                   <value v="0.25"/>
+                                   <value v="0.25"/>
+                                   <value v="0.25"/>
+                                   <value v="0.25"/>
+                          </kernel>
+		  </Algorithm>
+     </Algorithms>
+     <Nodes>
+		  <Node algorithm="ExcitatoryInput" name="INPUT_E" type="EXCITATORY_DIRECT" />
+          <Node algorithm="COND" name="E" type="EXCITATORY_DIRECT" />
+     </Nodes>
+     <Connections>
+		  <Connection In="INPUT_E" Out="E" num_connections="1" efficacy="0.1" delay="0.0"/>
+     </Connections>
+     <Reporting>
+          <Display node="E" />
+          <Rate node="E" t_interval="0.001" />
+     </Reporting>
+     <SimulationRunParameter>
+          <SimulationName>Cond</SimulationName>
+          <t_end>0.001</t_end>
+          <t_step>1e-05</t_step>
+          <name_log>cond.log</name_log>
+     </SimulationRunParameter>
+</Simulation>

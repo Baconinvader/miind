@@ -129,6 +129,7 @@ void CSRAdapter::InitializeStaticGridCellEfficacies(const std::vector<inttype>& 
 }
 
 void CSRAdapter::InitializeStaticGridCellCsrNd(const std::vector<inttype>& vecindex, const std::vector<TwoDLib::CSRMatrix>& mats) {
+
     _nr_grid_connections = mats.size();
 
     for (inttype m = 0; m < _nr_grid_connections; m++) {
@@ -157,6 +158,7 @@ void CSRAdapter::InitializeStaticGridCellCsrNd(const std::vector<inttype>& vecin
         checkCudaErrors(cudaMemcpy(_grid_forward_ia[m], &mats[m].ForwardIa()[0], mats[m].ForwardIa().size() * sizeof(inttype), cudaMemcpyHostToDevice));
         checkCudaErrors(cudaMemcpy(_grid_forward_ja[m], &mats[m].ForwardJa()[0], mats[m].ForwardJa().size() * sizeof(inttype), cudaMemcpyHostToDevice));
     }
+
 }
 
 void CSRAdapter::InitializeStaticGridConductanceEfficacies(const std::vector<inttype>& vecindex,
@@ -348,6 +350,7 @@ void CSRAdapter::DeleteStreams()
 
 void CSRAdapter::FillDerivative()
 {
+
     checkCudaErrors(cudaMalloc((fptype**)&_dydt, _group._n * sizeof(fptype)));
 }
 
@@ -374,6 +377,7 @@ void CSRAdapter::ClearDerivative()
 
     inttype n = _group._n;
     CudaClearDerivative << <_numBlocks, _blockSize >> > (n, _dydt);
+
 }
 
 std::vector<inttype> CSRAdapter::NrRows(const std::vector<TwoDLib::CSRMatrix>& vecmat) const
@@ -418,66 +422,37 @@ void CSRAdapter::CalculateGridDerivative(const std::vector<inttype>& vecindex, c
 void CSRAdapter::CalculateMeshGridDerivative(const std::vector<inttype>& vecindex,
     const std::vector<fptype>& vecrates, const std::vector<fptype>& vecstays,
     const std::vector<fptype>& vecgoes, const std::vector<int>& vecoff1s,
-    const std::vector<int>& vecoff2s, const std::vector<std::vector<dbltype>>& kernels)
+    const std::vector<int>& vecoff2s)
 {
-
-    //TODO parallel kernel
-    //kernel
 
     for (inttype m = 0; m < vecstays.size(); m++)
     {
-        if (kernels[vecindex[m]].size() > 0) {
-            for (int i = 0; i < kernels[vecindex[m]].size(); i++) {
-                // be careful to use this block size
-                inttype numBlocks = (_nr_rows[vecindex[m]] + _blockSize - 1) / _blockSize;
-                CudaCalculateGridDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[m]] >> > (_nr_rows[vecindex[m]], vecrates[m] * kernels[vecindex[m]][i], vecstays[m], vecgoes[m], vecoff1s[m], vecoff2s[m], _dydt, _group._mass_histories[i], _offsets[vecindex[m]]);
-            }
-        }
-        else {
-            //no kernel
-            // be careful to use this block size
-            inttype numBlocks = (_nr_rows[vecindex[m]] + _blockSize - 1) / _blockSize;
-            CudaCalculateGridDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[m]] >> > (_nr_rows[vecindex[m]], vecrates[m], vecstays[m], vecgoes[m], vecoff1s[m], vecoff2s[m], _dydt, _group._mass, _offsets[vecindex[m]]);
-        }
+        // be careful to use this block size
+        inttype numBlocks = (_nr_rows[vecindex[m]] + _blockSize - 1) / _blockSize;
+        CudaCalculateGridDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[m]] >> > (_nr_rows[vecindex[m]], vecrates[m], vecstays[m], vecgoes[m], vecoff1s[m], vecoff2s[m], _dydt, _group._mass, _offsets[vecindex[m]]);
     }
 
-
-
-    //kernel
     for (int n = vecstays.size(); n < vecrates.size(); n++)
     {
-        if (kernels[vecindex[n]].size() > 0) {
-            for (int i = 0; i < kernels[vecindex[n]].size(); i++) {
-                inttype mat_index = _grid_transforms.size() + (n - vecstays.size());
-                // be careful to use this block size
-                inttype numBlocks = (_nr_rows[mat_index] + _blockSize - 1) / _blockSize;
-                CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n] * kernels[vecindex[n]][i], _dydt, _group._mass_histories[i], _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mat_index]);
-            }
-        }
-        else {
-            //no kernel
-            inttype mat_index = _grid_transforms.size() + (n - vecstays.size());
-            // be careful to use this block size
-            inttype numBlocks = (_nr_rows[mat_index] + _blockSize - 1) / _blockSize;
-            CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n], _dydt, _group._mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mat_index]);
-        }
+        inttype mat_index = _grid_transforms.size() + (n - vecstays.size());
+        // be careful to use this block size
+        inttype numBlocks = (_nr_rows[mat_index] + _blockSize - 1) / _blockSize;
+        CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n], _dydt, _group._mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mat_index]);
     }
-
-
 
     cudaDeviceSynchronize();
 
 }
 
+
 void CSRAdapter::CalculateMeshGridDerivativeWithEfficacy(const std::vector<inttype>& vecindex, const std::vector<inttype>& in_vecindex,
-    const std::vector<fptype>& vecrates, const std::vector<std::vector<dbltype>>& kernels)
+    const std::vector<fptype>& vecrates)
 {
+
     for (inttype m = 0; m < _nr_grid_connections; m++)
     {
         unsigned int mesh_m = vecindex[m];
         unsigned int in_mesh_m = in_vecindex[m];
-
-
 
         if (_group.getGroupObjects()[mesh_m] > 0) {
             continue;
@@ -486,20 +461,23 @@ void CSRAdapter::CalculateMeshGridDerivativeWithEfficacy(const std::vector<intty
         // be careful to use this block size
         inttype numBlocks = (_nr_rows[vecindex[m]] + _blockSize - 1) / _blockSize;
 
-        //TODO verify this works with new stuff
-        //TODO make this more parallel
-        if (kernels[in_mesh_m].size() > 0) {
-            for (int i = 0; i < kernels[in_mesh_m].size(); i++) {
-                fptype* deriv_mass = (i == 0) ? _group._mass : _group._mass_histories[i];
-                CudaCalculateGridDerivativeCsr << <numBlocks, _blockSize, 0, _streams[vecindex[m]] >> > (_nr_rows[vecindex[m]], vecrates[m] * kernels[in_mesh_m][i], _dydt, deriv_mass, _grid_val[m], _grid_ia[m], _grid_ja[m], _offsets[mesh_m]);
-
-            }
+        dim3 numBlocks2D;
+        dim3 blockSize2D = dim3(_blockSize, 1);
+        if (in_mesh_m < _group._kernels.size() && _group._kernels[in_mesh_m].size() > 0) {
+            // kernel
+            numBlocks2D = dim3(numBlocks, _group._kernels[in_mesh_m].size());
         }
         else {
-            CudaCalculateGridDerivativeCsr << <numBlocks, _blockSize, 0, _streams[vecindex[m]] >> > (_nr_rows[vecindex[m]], vecrates[m], _dydt, _group._mass, _grid_val[m], _grid_ia[m], _grid_ja[m], _offsets[mesh_m]);
+            // no kernel
+            numBlocks2D = dim3(numBlocks, 1);
         }
 
+        CudaCalculateGridDerivativeCsrKernel << <numBlocks, _blockSize, 0, _streams[vecindex[m]] >> > (_nr_rows[vecindex[m]], vecrates[m], _dydt, _group._mass, _group._mass_histories, _group._host_mass_histories.size(),
+            _grid_val[m], _grid_ia[m], _grid_ja[m], _offsets[mesh_m], _group._vec_vec_kernels[in_mesh_m], _group._kernels[in_mesh_m].size());
+
+
     }
+
 
     for (int n = _nr_grid_connections; n < vecrates.size(); n++)
     {
@@ -509,41 +487,26 @@ void CSRAdapter::CalculateMeshGridDerivativeWithEfficacy(const std::vector<intty
         unsigned int in_mesh_m = in_vecindex[n];
 
         if (_group.getGroupObjects()[mesh_m] > 0) {
-
             continue;
         }
 
         // be careful to use this block size
         inttype numBlocks = (_nr_rows[mat_index] + _blockSize - 1) / _blockSize;
 
-        unsigned int k = 0;
-        unsigned int kern_size = kernels[in_mesh_m].size();
-        int size_difference = (kern_size > _group._mass_histories.size()) ? kern_size - _group._mass_histories.size() : 0;
-
-        // no kernel available?
-        bool no_kernel = (kern_size == 0) || (kernels.size() <= in_mesh_m);
-
-        // if the kernel size is greater than the number of histories available, then we pad with the current mass
-        // so if a kernel of size 5 only had 3 available histories, the first 2 kernel weights are applied with the current mass
-        double kern_val;
-        while (k < size_difference || no_kernel) {
-            kern_val = (no_kernel) ? 1.0 : kernels[in_mesh_m][k];
-
-            CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n] * kern_val, _dydt, _group._mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mesh_m]);
-
-            k++;
-
-            if (no_kernel)
-                break;
+        dim3 numBlocks2D;
+        dim3 blockSize2D = dim3(_blockSize, 1);
+        if (in_mesh_m < _group._kernels.size() && _group._kernels[in_mesh_m].size() > 0) {
+            // kernel
+            numBlocks2D = dim3(numBlocks, _group._kernels[in_mesh_m].size());
+        }
+        else {
+            // no kernel
+            numBlocks2D = dim3(numBlocks, 1);
         }
 
-        fptype* deriv_mass;
-        for (k; k < kern_size; k++) {
-            deriv_mass = (k == size_difference) ? _group._mass : _group._mass_histories[k - size_difference];
-
-            CudaCalculateDerivative << <numBlocks, _blockSize, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n] * kernels[in_mesh_m][k], _dydt, deriv_mass, _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mesh_m]);
-
-        }
+        CudaCalculateDerivativeKernel << < numBlocks2D, blockSize2D, 0, _streams[vecindex[n]] >> > (_nr_rows[mat_index], vecrates[n], _dydt, _group._mass, _group._mass_histories, _group._host_mass_histories.size(),
+            _val[mat_index], _ia[mat_index], _ja[mat_index], _group._map, _offsets[mesh_m],
+            _group._vec_vec_kernels[in_mesh_m], _group._kernels[in_mesh_m].size());
 
     }
 
@@ -555,6 +518,7 @@ void CSRAdapter::CalculateMeshGridDerivativeWithEfficacy(const std::vector<intty
 
 void CSRAdapter::SingleTransformStep()
 {
+
     for (inttype m : _grid_transforms)
     {
         if (_group._vec_num_objects[m] > 0)
@@ -564,6 +528,7 @@ void CSRAdapter::SingleTransformStep()
         inttype numBlocks = (_nr_rows[m] + _blockSize - 1) / _blockSize;
         CudaSingleTransformStep << <numBlocks, _blockSize, 0, _streams[m] >> > (_nr_rows[m], _dydt, _group._mass, _val[m], _ia[m], _ja[m], _group._map, _offsets[m]);
     }
+
 }
 
 void CSRAdapter::SingleTransformStepFiniteSize()
@@ -594,12 +559,19 @@ void CSRAdapter::AddDerivativeFull()
 }
 
 void CSRAdapter::setRandomSeeds(double seed) {
+
+
     inttype numBlocks = (_group.NumObjects() + _blockSize - 1) / _blockSize;
+
     initCurand << <numBlocks, _blockSize >> > (_randomState, seed);
+
+
+
+
 }
 
 void CSRAdapter::CalculateMeshGridDerivativeWithEfficacyFinite(const std::vector<inttype>& vecindex,
-    const std::vector<fptype>& vecrates, const std::vector<fptype>& efficacy, const std::vector<fptype>& cell_widths, const std::vector<inttype>& cell_offsets, double timestep, const std::vector<std::vector<double>>& kernels)
+    const std::vector<fptype>& vecrates, const std::vector<fptype>& efficacy, const std::vector<fptype>& cell_widths, const std::vector<inttype>& cell_offsets, double timestep)
 {
     for (inttype m = 0; m < _nr_grid_connections; m++)
     {
@@ -613,20 +585,9 @@ void CSRAdapter::CalculateMeshGridDerivativeWithEfficacyFinite(const std::vector
 
         generatePoissonSpikes << <numBlocks, _blockSize >> > (_group._vec_num_objects[mesh_m], _group._vec_num_object_offsets[mesh_m], vecrates[m], timestep, _random_poisson, _randomState);
 
-        //TODO: re-add this with finite
-        /*if (kernels[mesh_m].size() > 1) {
-            // if we are dealing with a kernel, we randomly choose between histories for each object, with the chance of choosing a specific history given by a kernel
-            CudaCalculateGridDerivativeCsrFinite << <numBlocks, _blockSize >> > (_group._vec_num_objects[mesh_m], _group._vec_num_object_offsets[mesh_m], _random_poisson, _group._vec_vec_objects_to_index,
-                _group._vec_objects_to_index, _group._vec_vec_objects_refract_times, _group._vec_vec_objects_refract_index,
-                _grid_forward_val[m], _grid_forward_ia[m], _grid_forward_ja[m], _offsets[mesh_m], _randomState, _group._vec_vec_kernels[mesh_m], kernels[mesh_m].size());
-
-        }
-        else {*/
         CudaCalculateGridDerivativeCsrFinite << <numBlocks, _blockSize >> > (_group._vec_num_objects[mesh_m], _group._vec_num_object_offsets[mesh_m], _random_poisson, _group._vec_objects_to_index,
             _group._vec_objects_refract_times, _group._vec_objects_refract_index,
             _grid_forward_val[m], _grid_forward_ia[m], _grid_forward_ja[m], _offsets[mesh_m], _randomState);
-        //}
-
 
         for (int n = _nr_grid_connections; n < vecrates.size(); n++)
         {
@@ -641,23 +602,9 @@ void CSRAdapter::CalculateMeshGridDerivativeWithEfficacyFinite(const std::vector
             // be careful to use this block size
             generatePoissonSpikes << <numBlocks, _blockSize >> > (_group._vec_num_objects[mesh_n], _group._vec_num_object_offsets[mesh_n], vecrates[n], timestep, _random_poisson, _randomState);
 
-            //TODO re-add this with finite
-            /*if (kernels[mesh_n].size() > 1) {
-                // if we are dealing with a kernel, we randomly choose between histories for each object, with the chance of choosing a specific history given by a kernel
-                CudaUpdateFiniteObjects << <numBlocks, _blockSize >> > (_group._vec_num_objects[mesh_n], _group._vec_num_object_offsets[mesh_n], _random_poisson, _group._vec_vec_objects_to_index,
-                    _group._vec_objects_to_index, _group._vec_vec_objects_refract_times, _group._vec_vec_objects_refract_index, _forward_val[mat_index], _forward_ia[mat_index], _forward_ja[mat_index],
-                    _group._map, _group._unmap, _offsets[mesh_n], _randomState, _group._vec_vec_kernels[mesh_n], kernels[mesh_n].size());
-
-
-                //CudaUpdateFiniteObjects << <numBlocks, _blockSize >> > (_group._vec_num_objects[mesh_n], _group._vec_num_object_offsets[mesh_n], _random_poisson, _group._vec_objects_to_index,
-                  //  _group._vec_objects_refract_times, _group._vec_objects_refract_index, _forward_val[mat_index], _forward_ia[mat_index], _forward_ja[mat_index],
-                    //_group._map, _group._unmap, _offsets[mesh_n], _randomState);
-            }
-            else {*/
             CudaUpdateFiniteObjects << <numBlocks, _blockSize >> > (_group._vec_num_objects[mesh_n], _group._vec_num_object_offsets[mesh_n], _random_poisson, _group._vec_objects_to_index,
                 _group._vec_objects_refract_times, _group._vec_objects_refract_index, _forward_val[mat_index], _forward_ia[mat_index], _forward_ja[mat_index],
                 _group._map, _group._unmap, _offsets[mesh_n], _randomState);
-            //}
 
         }
     }
